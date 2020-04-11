@@ -159,6 +159,7 @@ class ListItem(object):
             return
 
         self.cast = details.get('cast', [])
+        self.imdb_id = self.imdb_id or details.get('infolabels', {}).get('imdbnumber')
         self.infolabels = utils.merge_two_dicts(details.get('infolabels', {}), self.infolabels)
         self.infoproperties = utils.merge_two_dicts(details.get('infoproperties', {}), self.infoproperties)
 
@@ -181,14 +182,14 @@ class ListItem(object):
         if not details:
             return
 
-        self.icon = self.icon or details.get('icon', '')
-        self.thumb = self.thumb or details.get('thumb', '')
-        self.poster = self.poster or details.get('poster', '')
-        self.fanart = self.fanart or details.get('fanart', '')
-        self.landscape = self.landscape or details.get('landscape', '')
-        self.clearart = self.clearart or details.get('clearart', '')
-        self.clearlogo = self.clearlogo or details.get('clearlogo', '')
-        self.discart = self.discart or details.get('discart', '')
+        self.icon = details.get('icon') or self.icon
+        self.thumb = details.get('thumb') or self.thumb
+        self.poster = details.get('poster') or self.poster
+        self.fanart = details.get('fanart') or self.fanart
+        self.landscape = details.get('landscape') or self.landscape
+        self.clearart = details.get('clearart') or self.clearart
+        self.clearlogo = details.get('clearlogo') or self.clearlogo
+        self.discart = details.get('discart') or self.discart
         self.cast = self.cast or details.get('cast', [])
         self.infolabels = utils.merge_two_dicts(details.get('infolabels', {}), self.infolabels)
         self.infoproperties = utils.merge_two_dicts(details.get('infoproperties', {}), self.infoproperties)
@@ -214,6 +215,12 @@ class ListItem(object):
                 self.infolabels.get('mediatype') == 'tvshow' and
                 utils.try_parse_int(self.infoproperties.get('watchedepisodes', 0)) > 0):
             self.infoproperties['unwatchedepisodes'] = utils.try_parse_int(self.infolabels.get('episode')) - utils.try_parse_int(self.infoproperties.get('watchedepisodes'))
+
+    def set_url_props(self, url, prefix='Item'):
+        for k, v in url.items():
+            if not k or not v:
+                continue
+            self.infoproperties[u'{}.{}'.format(prefix, k)] = u'{}'.format(v)
 
     def set_listitem(self, path=None):
         listitem = xbmcgui.ListItem(label=self.label, label2=self.label2, path=path)

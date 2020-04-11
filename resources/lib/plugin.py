@@ -18,6 +18,7 @@ class Plugin(object):
         self.kodimoviedb = None
         self.koditvshowdb = None
         self.details_tv = None
+        self.imdb_top250 = None
 
         cache_long = self.addon.getSettingInt('cache_details_days')
         cache_short = self.addon.getSettingInt('cache_list_days')
@@ -77,6 +78,15 @@ class Plugin(object):
                 item['infoproperties'] = utils.merge_two_dicts(item.get('infoproperties', {}), ratings)
         return item
 
+    def get_top250_rank(self, item):
+        if not self.imdb_top250:
+            self.imdb_top250 = [i.get('movie', {}).get('ids', {}).get('tmdb') for i in TraktAPI().get_imdb_top250()]
+        try:
+            item['infolabels']['top250'] = self.imdb_top250.index(item.get('infoproperties', {}).get('tmdb_id')) + 1
+        except Exception:
+            pass
+        return item
+
     def get_fanarttv_artwork(self, item, tmdbtype=None, tmdb_id=None, tvdb_id=None):
         if not self.fanarttv or tmdbtype not in ['movie', 'tv']:
             return item
@@ -84,7 +94,7 @@ class Plugin(object):
         artwork, lookup_id, func = None, None, None
 
         if tmdbtype == 'tv':
-            lookup_id = tvdb_id or item.get('tvdb_id')
+            lookup_id = tvdb_id or item.get('infoproperties', {}).get('tvshow.tvdb_id') or item.get('tvdb_id')
             func = self.fanarttv.get_tvshow_allart_lc
         elif tmdbtype == 'movie':
             lookup_id = tmdb_id or item.get('tmdb_id')
@@ -105,7 +115,7 @@ class Plugin(object):
             item['extrafanart'] = item.get('extrafanart') or utils.iterate_extraart(artwork.get('extrafanart', [])) or ''
         return item
 
-    def get_db_info(self, info=None, tmdbtype=None, imdb_id=None, originaltitle=None, title=None, year=None, tvshowtitle=None, season=None, episode=None):
+    def get_db_info(self, info=None, tmdbtype=None, imdb_id=None, originaltitle=None, title=None, year=None, tvshowtitle=None, season=None, episode=None, tmdb_id=None, tvdb_id=None):
         dbid = None
         kodidatabase = None
         if tmdbtype == 'movie':
@@ -113,10 +123,10 @@ class Plugin(object):
         if tmdbtype == 'tv':
             kodidatabase = self.koditvshowdb = self.koditvshowdb or KodiLibrary(dbtype='tvshow')
         if kodidatabase and info:
-            return kodidatabase.get_info(info=info, imdb_id=imdb_id, originaltitle=originaltitle, title=title, year=year)
+            return kodidatabase.get_info(info=info, imdb_id=imdb_id, tmdb_id=tmdb_id, tvdb_id=tvdb_id, originaltitle=originaltitle, title=title, year=year)
         if tmdbtype == 'episode':
             kodidatabase = self.koditvshowdb = self.koditvshowdb or KodiLibrary(dbtype='tvshow')
-            dbid = kodidatabase.get_info(info='dbid', imdb_id=imdb_id, title=tvshowtitle, year=year)
+            dbid = kodidatabase.get_info(info='dbid', imdb_id=imdb_id, tmdb_id=tmdb_id, tvdb_id=tvdb_id, title=tvshowtitle, year=year)
             kodidatabase = KodiLibrary(dbtype='episode', tvshowid=dbid)
         if dbid and kodidatabase and season and episode:
             return kodidatabase.get_info('dbid', season=season, episode=episode)

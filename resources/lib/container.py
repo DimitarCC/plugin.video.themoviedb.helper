@@ -47,6 +47,10 @@ class Container(Plugin):
     def finish_container(self):
         if self.params.get('random'):
             return
+        for k, v in self.params.items():
+            if not k or not v:
+                continue
+            xbmcplugin.setProperty(self.handle, u'Param.{}'.format(k), u'{}'.format(v))  # Set params to container properties
         xbmcplugin.addSortMethod(self.handle, xbmcplugin.SORT_METHOD_UNSORTED)
         xbmcplugin.addSortMethod(self.handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE)
         xbmcplugin.addSortMethod(self.handle, xbmcplugin.SORT_METHOD_LASTPLAYED)
@@ -197,7 +201,6 @@ class Container(Plugin):
             items.append(item_upnext)
 
         for i in items:
-
             # Add NextPage Item to End of List
             if i.nextpage:
                 i.url = self.params.copy()
@@ -264,6 +267,8 @@ class Container(Plugin):
                 info='dbid',
                 tmdbtype=self.item_tmdbtype,
                 imdb_id=i.imdb_id,
+                tmdb_id=i.infoproperties.get('tvshow.tmdb_id') or i.infoproperties.get('tmdb_id'),
+                tvdb_id=i.infoproperties.get('tvshow.tvdb_id') or i.infoproperties.get('tvdb_id'),
                 originaltitle=i.infolabels.get('originaltitle'),
                 title=i.infolabels.get('title'),
                 year=i.infolabels.get('year'),
@@ -559,7 +564,12 @@ class Container(Plugin):
             i for i in trakt.get_airingshows(
                 start_date=utils.try_parse_int(self.params.get('startdate', 0)) - 1,
                 days=utils.try_parse_int(self.params.get('days', 1)) + 2)
-            if kodidb.get_info('dbid', title=i.get('show', {}).get('title'))]
+            if kodidb.get_info(
+                'dbid',
+                tmdb_id=i.get('show', {}).get('ids', {}).get('tmdb'),
+                tvdb_id=i.get('show', {}).get('ids', {}).get('tvdb'),
+                imdb_id=i.get('show', {}).get('ids', {}).get('imdb'),
+                title=i.get('show', {}).get('title'))]
 
         items = []
         for i in traktitems:
@@ -583,24 +593,8 @@ class Container(Plugin):
                 episode=i.get('episode', {}).get('number')))
             li.tmdb_id = i.get('show', {}).get('ids', {}).get('tmdb')  # Set TVSHOW ID
 
-            # Create our airing properties
-            air_date = utils.convert_timestamp(i.get('first_aired'), utc_convert=True)
-            li.infolabels['premiered'] = air_date.strftime('%Y-%m-%d')
-            li.infolabels['year'] = air_date.strftime('%Y')
-            li.infoproperties['air_date'] = utils.get_region_date(air_date, 'datelong')
-            li.infoproperties['air_time'] = utils.get_region_date(air_date, 'time')
-            li.infoproperties['air_day'] = air_date.strftime('%A')
-            li.infoproperties['air_day_short'] = air_date.strftime('%a')
-            li.infoproperties['air_date_short'] = air_date.strftime('%d %b')
-
-            # Do some fallback properties in-case TMDb doesn't have info
-            li.infolabels['title'] = li.label = i.get('episode', {}).get('title')
-            li.infolabels['episode'] = i.get('episode', {}).get('number')
-            li.infolabels['season'] = i.get('episode', {}).get('season')
-            li.infolabels['tvshowtitle'] = i.get('show', {}).get('title')
-
-            # Add our item
-            items.append(li)
+            # Get some additional properties and add our item
+            items.append(trakt.get_calendar_properties(li, i))
 
         # Today's date to plugin category
         date = datetime.datetime.today() + datetime.timedelta(days=utils.try_parse_int(self.params.get('startdate', 0)))
@@ -625,6 +619,8 @@ class Container(Plugin):
             listitem = ListItem(label=label, icon=icon)
             url = {'info': info, 'type': 'episode', 'startdate': i[1], 'days': i[2]}
             url = self.set_url_params(url)
+            listitem.set_url_props(self.params, 'container')
+            listitem.set_url_props(url, 'item')
             listitem.create_listitem(self.handle, **url)
         self.finish_container()
 
@@ -652,6 +648,8 @@ class Container(Plugin):
             listitem = ListItem(label=label, label2=label2, icon=icon, thumb=icon, poster=icon, infolabels=infolabels)
             url = {'info': 'trakt_userlist', 'user_slug': user_slug, 'list_slug': list_slug, 'type': self.params.get('type')}
             listitem.url = self.set_url_params(url)
+            listitem.set_url_props(self.params, 'container')
+            listitem.set_url_props(listitem.url, 'item')
             listitem.create_listitem(self.handle, **listitem.url) if not self.params.get('random') else self.randomlist.append(listitem)
         self.finish_container()
 
@@ -807,7 +805,6 @@ class Container(Plugin):
             if len(search_history) > 9:
                 search_history.pop(0)
             search_history.append(query)
-        utils.kodi_log(search_history, 1)
         cache.set(cache_name, search_history, expiration=datetime.timedelta(days=cache_days))
         return query
 
@@ -841,6 +838,8 @@ class Container(Plugin):
 
         # Create first search item
         listitem = ListItem(label='Search {}'.format(utils.type_convert(self.params.get('type'), 'plural')), icon=icon)
+        listitem.set_url_props(self.params, 'container')
+        listitem.set_url_props(url, 'item')
         listitem.create_listitem(self.handle, **url)
 
         # Create cached history searches
@@ -849,6 +848,8 @@ class Container(Plugin):
         for query in history:
             url['query'] = query  # Add query as param so we search it
             listitem = ListItem(label=query, icon=icon)
+            listitem.set_url_props(self.params, 'container')
+            listitem.set_url_props(url, 'item')
             listitem.create_listitem(self.handle, **url)
 
         # Create clear cache item if history exists
@@ -857,6 +858,8 @@ class Container(Plugin):
             url['clearcache'] = 'True'
             url.pop('query', '')
             listitem = ListItem(label='Clear Search History', icon=icon)
+            listitem.set_url_props(self.params, 'container')
+            listitem.set_url_props(url, 'item')
             listitem.create_listitem(self.handle, **url)
 
         # Finish container
@@ -889,11 +892,14 @@ class Container(Plugin):
             i.label2 = i.infoproperties.get('role') or i.label2
             i.infoproperties['numitems.dbid'] = self.numitems_dbid
             i.infoproperties['numitems.tmdb'] = self.numitems_tmdb
+            i.infoproperties['dbtype'] = self.item_dbtype
             i.get_details(self.item_dbtype, self.tmdb, self.omdb, self.params.get('localdb'))
             i.get_url(url, url_tmdb_id, self.params.get('widget'), self.params.get('fanarttv'), self.params.get('nextpage'), self.params.get('extended'))
             i.get_extra_artwork(self.tmdb, self.fanarttv) if len(items) < 22 and self.exp_fanarttv() else None
             i.get_trakt_watched(trakt_watched) if x == 0 or self.params.get('info') != 'details' else None
             i.get_trakt_unwatched(trakt=TraktAPI(tmdb=self.tmdb), request=trakt_unwatched, check_sync=self.check_sync) if x == 0 or self.params.get('info') != 'details' else None
+            i.set_url_props(self.params, 'container')
+            i.set_url_props(i.url, 'item')
             i.create_listitem(self.handle, **i.url) if not self.params.get('random') else self.randomlist.append(i)
             x += 1
         self.finish_container()
@@ -909,6 +915,7 @@ class Container(Plugin):
         kwparams.setdefault('key', cat.get('key'))
         path = cat.get('path', '').format(**self.params)
 
+        self.plugincategory = self.params.get('plugincategory') or self.plugincategory
         self.dbid_sorting = cat.get('dbid_sorting', False)
         self.item_tmdbtype = cat.get('item_tmdbtype', '').format(**self.params)
         self.list_items(
@@ -965,9 +972,10 @@ class Container(Plugin):
         if not details:
             return
 
-        # Merge OMDb rating details for movies
+        # Merge OMDb rating details and top250 for movies
         if self.params.get('type') == 'movie':
             details = self.get_omdb_ratings(details, cache_only=False)
+            details = self.get_top250_rank(details)
 
         # Merge library stats for person
         if self.params.get('type') == 'person':
@@ -1079,6 +1087,8 @@ class Container(Plugin):
                     label = i.get('name').format('', '') if self.params.get('info') in ['dir_movie', 'dir_tv', 'dir_person'] else i.get('name').format(utils.type_convert(t, 'plural'), ' ')
 
                     listitem = ListItem(label=label, icon=i.get('icon', '').format(self.addonpath))
+                    listitem.set_url_props(self.params, 'container')
+                    listitem.set_url_props(url, 'item')
                     listitem.create_listitem(self.handle, **url)
         self.finish_container()
 
