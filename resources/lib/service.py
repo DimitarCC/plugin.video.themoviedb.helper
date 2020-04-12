@@ -37,7 +37,7 @@ class ServiceMonitor(Plugin):
         self.home.setProperty('TMDbHelper.ServiceStarted', 'True')
 
         if self.addon.getSettingBool('library_autoupdate'):
-            xbmc.executebuiltin('RunScript(plugin.video.themoviedb.helper,library_autoupdate)')
+            xbmc.executebuiltin('RunScript(plugin.video.skin.info.provider,library_autoupdate)')
 
         if self.addon.getSettingString('trakt_token'):
             self.home.setProperty('TMDbHelper.TraktIsAuth', 'True')

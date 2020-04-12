@@ -42,7 +42,7 @@ class ListItem(object):
         self.extrafanart = extrafanart or {}
 
     def set_url(self, **kwargs):
-        url = kwargs.pop('url', 'plugin://plugin.video.themoviedb.helper/?')
+        url = kwargs.pop('url', 'plugin://plugin.video.skin.info.provider/?')
         return u'{0}{1}'.format(url, urlencode(kwargs))
 
     def get_url(self, url, url_tmdb_id=None, widget=None, fanarttv=None, nextpage=None, extended=None):

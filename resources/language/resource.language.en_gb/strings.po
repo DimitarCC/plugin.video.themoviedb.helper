@@ -1,6 +1,6 @@
 # XBMC Media Center language file
 # Addon Name: TheMovieDb Helper
-# Addon id: plugin.video.themoviedb.helper
+# Addon id: plugin.video.skin.info.provider
 # Addon Provider: jurialmunkey
 msgid ""
 msgstr ""
@@ -671,7 +671,7 @@ msgstr ""
 
 #: /resources/lib/requestapi.py
 msgctxt "#32009"
-msgid "API returned 401 unauthorised error. If you have entered an API key for this service$COMMA please check that it is correct. If this error relates to TMDb API$COMMA please post a debug log to [B]https://github.com/jurialmunkey/plugin.video.themoviedb.helper/issues[/B]"
+msgid "API returned 401 unauthorised error. If you have entered an API key for this service$COMMA please check that it is correct. If this error relates to TMDb API$COMMA please post a debug log to [B]https://github.com/jurialmunkey/plugin.video.skin.info.provider/issues[/B]"
 msgstr ""
 
 #: /resources/settings.xml

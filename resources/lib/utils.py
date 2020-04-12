@@ -9,7 +9,7 @@ import datetime
 from copy import copy
 from contextlib import contextmanager
 from resources.lib.constants import TYPE_CONVERSION, VALID_FILECHARS
-_addonlogname = '[plugin.video.themoviedb.helper]\n'
+_addonlogname = '[plugin.video.skin.info.provider]\n'
 _addon = xbmcaddon.Addon()
 _debuglogging = _addon.getSettingBool('debug_logging')
 
@@ -105,7 +105,7 @@ def normalise_filesize(filesize):
     return '{:.2f} {}'.format(filesize, 'PB')
 
 
-def rate_limiter(addon_name='plugin.video.themoviedb.helper', wait_time=None, api_name=None):
+def rate_limiter(addon_name='plugin.video.skin.info.provider', wait_time=None, api_name=None):
     """
     Simple rate limiter to prevent overloading APIs
     """

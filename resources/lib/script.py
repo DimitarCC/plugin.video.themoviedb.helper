@@ -285,7 +285,7 @@ class Script(Plugin):
             if not tmdb_id:
                 utils.kodi_log('Unable to find TMDb ID!\nQuery: {0} Type: {1}'.format(self.params.get('add_query'), self.params.get('type')), 1)
                 return
-            url = 'plugin://plugin.video.themoviedb.helper/?info=details&amp;type={0}&amp;tmdb_id={1}'.format(self.params.get('type'), tmdb_id)
+            url = 'plugin://plugin.video.skin.info.provider/?info=details&amp;type={0}&amp;tmdb_id={1}'.format(self.params.get('type'), tmdb_id)
             if url == self.home.getProperty(self.prefixcurrent):
                 return  # Already added so let's quit as user probably clicked twice
             self.position = self.get_position() + 1
@@ -343,7 +343,7 @@ class Script(Plugin):
             return
         self.addon.setSettingString('players_url', players_url)
         downloader = Downloader(
-            extract_to='special://profile/addon_data/plugin.video.themoviedb.helper/players',
+            extract_to='special://profile/addon_data/plugin.video.skin.info.provider/players',
             download_url=players_url)
         downloader.get_extracted_zip()
 
@@ -366,7 +366,7 @@ class Script(Plugin):
 
     def library_autoupdate(self):
         utils.kodi_log('UPDATING TV SHOWS LIBRARY', 1)
-        basedir_tv = self.addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.themoviedb.helper/tvshows/'
+        basedir_tv = self.addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/tvshows/'
         for f in xbmcvfs.listdir(basedir_tv)[0]:
             try:
                 folder = basedir_tv + f + '/'
@@ -391,7 +391,7 @@ class Script(Plugin):
                     continue
 
                 # Get the tvshow
-                url = 'plugin://plugin.video.themoviedb.helper/?info=seasons&tmdb_id={}&type=tv'.format(tmdb_id)
+                url = 'plugin://plugin.video.skin.info.provider/?info=seasons&tmdb_id={}&type=tv'.format(tmdb_id)
                 context.library_addtvshow(basedir=basedir_tv, folder=f, url=url, tmdb_id=tmdb_id)
             except Exception as exc:
                 utils.kodi_log('LIBRARY AUTO UPDATE ERROR:\n{}'.format(exc))
@@ -419,7 +419,7 @@ class Script(Plugin):
         if not self.params:
             """ If no params assume user wants to run plugin """
             # TODO: Maybe restart service here too?
-            self.params = {'call_path': 'plugin://plugin.video.themoviedb.helper/'}
+            self.params = {'call_path': 'plugin://plugin.video.skin.info.provider/'}
         if self.params.get('authenticate_trakt'):
             TraktAPI(force=True)
         elif self.params.get('update_players'):

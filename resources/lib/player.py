@@ -260,9 +260,9 @@ class Player(Plugin):
             self.item[k + '_url'] = quote_plus(utils.try_encode_string(v))
 
     def build_players(self, tmdbtype=None):
-        basedirs = ['special://profile/addon_data/plugin.video.themoviedb.helper/players/']
+        basedirs = ['special://profile/addon_data/plugin.video.skin.info.provider/players/']
         if self.addon.getSettingBool('bundled_players'):
-            basedirs.append('special://home/addons/plugin.video.themoviedb.helper/resources/players/')
+            basedirs.append('special://home/addons/plugin.video.skin.info.provider/resources/players/')
         for basedir in basedirs:
             files = [x for x in xbmcvfs.listdir(basedir)[1] if x.endswith('.json')]
             for file in files:
@@ -342,7 +342,7 @@ class Player(Plugin):
             f = xbmcvfs.File(file)
             contents = f.read()
             f.close()
-            if contents.startswith('plugin://plugin.video.themoviedb.helper'):
+            if contents.startswith('plugin://plugin.video.skin.info.provider'):
                 return
         return file
 

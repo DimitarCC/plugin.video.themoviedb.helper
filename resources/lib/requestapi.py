@@ -19,8 +19,8 @@ class RequestAPI(object):
         self.req_connect_err = utils.try_parse_float(xbmcgui.Window(10000).getProperty(self.req_connect_err_prop)) or 0
         self.cache_long = 14 if not cache_long or cache_long < 14 else cache_long
         self.cache_short = 1 if not cache_short or cache_short < 1 else cache_short
-        self.cache_name = 'plugin.video.themoviedb.helper'
-        self.addon_name = 'plugin.video.themoviedb.helper'
+        self.cache_name = 'plugin.video.skin.info.provider'
+        self.addon_name = 'plugin.video.skin.info.provider'
         self.addon = xbmcaddon.Addon(self.addon_name)
         self.dialog_noapikey_header = '{0} - {1}'.format(self.addon.getLocalizedString(32007), self.req_api_name)
         self.dialog_noapikey_text = self.addon.getLocalizedString(32009)

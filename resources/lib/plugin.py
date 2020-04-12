@@ -12,7 +12,7 @@ from resources.lib.traktapi import TraktAPI
 
 class Plugin(object):
     def __init__(self):
-        self.addon = xbmcaddon.Addon('plugin.video.themoviedb.helper')
+        self.addon = xbmcaddon.Addon('plugin.video.skin.info.provider')
         self.addonpath = self.addon.getAddonInfo('path')
         self.prefixname = 'TMDbHelper.'
         self.kodimoviedb = None

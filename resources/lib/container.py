@@ -774,7 +774,7 @@ class Container(Plugin):
         season, episode = self.params.get('season', ''), self.params.get('episode', '')
         command = 'play={0},tmdb_id={1}{{0}}'.format(self.params.get('type'), self.params.get('tmdb_id'))
         command = command.format(',season={0},episode={1}'.format(season, episode) if season and episode else '')
-        command = 'RunScript(plugin.video.themoviedb.helper,{})'.format(command)
+        command = 'RunScript(plugin.video.skin.info.provider,{})'.format(command)
         xbmc.executebuiltin(command)
 
         # Resolve to empty url if using a strm file because Kodi always expects resolvedurl in library
@@ -786,7 +786,7 @@ class Container(Plugin):
             return []
         if not cache:
             cache = simplecache.SimpleCache()
-        cache_name = 'plugin.video.themoviedb.helper.search.history.{}'.format(itemtype)
+        cache_name = 'plugin.video.skin.info.provider.search.history.{}'.format(itemtype)
         return cache.get(cache_name) or []
 
     def set_searchhistory(self, query=None, itemtype=None, cache=None, cache_days=120, clearcache=False):
@@ -796,7 +796,7 @@ class Container(Plugin):
             return query
         if not cache:
             cache = simplecache.SimpleCache()
-        cache_name = 'plugin.video.themoviedb.helper.search.history.{}'.format(itemtype)
+        cache_name = 'plugin.video.skin.info.provider.search.history.{}'.format(itemtype)
         search_history = []
         if not clearcache:
             search_history = self.get_searchhistory(itemtype, cache=cache)
@@ -825,7 +825,7 @@ class Container(Plugin):
             self.updatelisting = True
             self.params.pop('clearcache', '')
             self.set_searchhistory(itemtype=self.params.get('type'), clearcache=True)
-            container_url = 'plugin://plugin.video.themoviedb.helper/?'
+            container_url = 'plugin://plugin.video.skin.info.provider/?'
             container_url = u'{0}{1}'.format(container_url, urlencode(self.params))
 
         self.start_container()

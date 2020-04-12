@@ -6,7 +6,7 @@ import xbmcgui
 from resources.lib.traktapi import TraktAPI
 from resources.lib.kodilibrary import KodiLibrary
 import resources.lib.utils as utils
-_addon = xbmcaddon.Addon('plugin.video.themoviedb.helper')
+_addon = xbmcaddon.Addon('plugin.video.skin.info.provider')
 
 
 def library_cleancontent_replacer(content, old, new):
@@ -100,7 +100,7 @@ def library_addtvshow(basedir=None, folder=None, url=None, tmdb_id=None):
 
 def browse():
     tmdb_id = sys.listitem.getProperty('tvshow.tmdb_id')
-    path = 'plugin://plugin.video.themoviedb.helper/'
+    path = 'plugin://plugin.video.skin.info.provider/'
     path = path + '?info=seasons&type=tv&nextpage=True&tmdb_id={}'.format(tmdb_id)
     path = path + '&fanarttv=True' if _addon.getSettingBool('fanarttv_lookup') else path
     command = 'Container.Update({})' if xbmc.getCondVisibility("Window.IsMedia") else 'ActivateWindow(videos,{},return)'
@@ -116,12 +116,12 @@ def play():
             tmdb_id = sys.listitem.getProperty('tvshow.tmdb_id')
             season = sys.listitem.getVideoInfoTag().getSeason()
             episode = sys.listitem.getVideoInfoTag().getEpisode()
-            xbmc.executebuiltin('RunScript(plugin.video.themoviedb.helper,play={},tmdb_id={},season={},episode={},force_dialog=True)'.format(
+            xbmc.executebuiltin('RunScript(plugin.video.skin.info.provider,play={},tmdb_id={},season={},episode={},force_dialog=True)'.format(
                 dbtype, tmdb_id, season, episode))
 
         elif dbtype == 'movie':
             tmdb_id = sys.listitem.getProperty('tmdb_id')
-            xbmc.executebuiltin('RunScript(plugin.video.themoviedb.helper,play={},tmdb_id={},force_dialog=True)'.format(
+            xbmc.executebuiltin('RunScript(plugin.video.skin.info.provider,play={},tmdb_id={},force_dialog=True)'.format(
                 dbtype, tmdb_id))
 
 
@@ -144,8 +144,8 @@ def library_userlist():
 
     xbmcgui.Dialog().notification('TMDbHelper', 'Adding items to library...')
     with utils.busy_dialog():
-        basedir_movie = _addon.getSettingString('movies_library') or 'special://profile/addon_data/plugin.video.themoviedb.helper/movies/'
-        basedir_tv = _addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.themoviedb.helper/tvshows/'
+        basedir_movie = _addon.getSettingString('movies_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/movies/'
+        basedir_tv = _addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/tvshows/'
         auto_update = _addon.getSettingBool('auto_update') or False
 
         for i in request:
@@ -159,7 +159,7 @@ def library_userlist():
                 continue  # Don't bother if there isn't a tmdb_id as lookup is too expensive for long lists
 
             if i_type == 'movie':  # Add any movies
-                content = 'plugin://plugin.video.themoviedb.helper/?info=play&tmdb_id={}&type=movie'.format(tmdb_id)
+                content = 'plugin://plugin.video.skin.info.provider/?info=play&tmdb_id={}&type=movie'.format(tmdb_id)
                 folder = '{} ({})'.format(item.get('title'), item.get('year'))
                 movie_name = '{} ({})'.format(item.get('title'), item.get('year'))
                 xbmcgui.Dialog().notification('TMDbHelper', 'Adding {} to library...'.format(movie_name))
@@ -167,7 +167,7 @@ def library_userlist():
                 library_create_nfo('movie', tmdb_id, folder, basedir=basedir_movie)
 
             if i_type == 'show':  # Add whole tvshows
-                content = 'plugin://plugin.video.themoviedb.helper/?info=seasons&nextpage=True&tmdb_id={}&type=tv'.format(tmdb_id)
+                content = 'plugin://plugin.video.skin.info.provider/?info=seasons&nextpage=True&tmdb_id={}&type=tv'.format(tmdb_id)
                 folder = item.get('title')
                 xbmcgui.Dialog().notification('TMDbHelper', 'Adding {} to library...'.format(item.get('title')))
                 library_addtvshow(basedir=basedir_tv, folder=folder, url=content, tmdb_id=tmdb_id)
@@ -179,8 +179,8 @@ def library():
     with utils.busy_dialog():
         title = utils.validify_filename(sys.listitem.getVideoInfoTag().getTitle())
         dbtype = sys.listitem.getVideoInfoTag().getMediaType()
-        basedir_movie = _addon.getSettingString('movies_library') or 'special://profile/addon_data/plugin.video.themoviedb.helper/movies/'
-        basedir_tv = _addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.themoviedb.helper/tvshows/'
+        basedir_movie = _addon.getSettingString('movies_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/movies/'
+        basedir_tv = _addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/tvshows/'
         auto_update = _addon.getSettingBool('auto_update') or False
 
         # Setup our folders and file names
