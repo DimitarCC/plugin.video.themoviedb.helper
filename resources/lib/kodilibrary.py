@@ -165,7 +165,7 @@ class KodiLibrary(object):
         infolabels['playcount'] = utils.try_parse_int(item.get('playcount'))
         infolabels['overlay'] = item.get('overlay')
         infolabels['director'] = item.get('director', [])
-        infolabels['mpaa'] = item.get('mpaa')
+        infolabels['MPAA'] = item.get('mpaa')
         infolabels['plot'] = item.get('plot')
         infolabels['plotoutline'] = item.get('plotoutline')
         infolabels['title'] = item.get('title')
@@ -204,6 +204,16 @@ class KodiLibrary(object):
         infoproperties['imdb_votes'] = '{:0,.0f}'.format(utils.try_parse_float(item.get('ratings', {}).get('imdb', {}).get('votes')))
         infoproperties['tmdb_rating'] = '{0:.1f}'.format(utils.try_parse_float(item.get('ratings', {}).get('themoviedb', {}).get('rating')))
         infoproperties['tmdb_votes'] = '{:0,.0f}'.format(utils.try_parse_float(item.get('ratings', {}).get('themoviedb', {}).get('votes')))
+        infoproperties['set.numitems'] = item.get('limits', {}).get('total') or ''
+        movies_set = item.get('movies') or None
+        if movies_set:
+            years = []
+            for m in movies_set:
+                year = utils.try_parse_int(m.get('year'))
+                years.append(year)
+            yearl = min(years)
+            yearh = max(years)
+            infoproperties['set.years'] = '{0} - {1}'.format(yearl, yearh)
         infoproperties = utils.del_empty_keys(infoproperties, ['N/A', '0.0', '0'])
         return infoproperties
 
@@ -225,13 +235,17 @@ class KodiLibrary(object):
             'clearlogo': clearlogo, 'clearart': clearart, 'discart': discart, 'cast': cast, 'infolabels': infolabels,
             'infoproperties': infoproperties, 'streamdetails': streamdetails}
 
-    def get_item_details(self, dbid=None, method=None, key=None, properties=None):
+    def get_item_details(self, dbid=None, method=None, key=None, properties=None, isSet=False):
         if not dbid or not method or not key or not properties:
             return {}
         param_name = "{0}id".format(key)
         params = {
             param_name: utils.try_parse_int(dbid),
             "properties": properties}
+        if isSet == True:
+           params = {
+               param_name: utils.try_parse_int(dbid),
+               "movies":{ "properties": properties }}
         details = self.get_jsonrpc(method, params)
         if not details or not isinstance(details, dict):
             return {}
@@ -271,3 +285,7 @@ class KodiLibrary(object):
                 "firstaired", "season", "episode", "showtitle", "file", "tvshowid", "thumbnail"]}
         response = self.get_jsonrpc(method, params)
         return response.get('result', {}).get('files', [{}]) or [{}]
+    
+    def get_movieset_details(self, db_id):
+        properties = ["year"]
+        return self.get_item_details(dbid=db_id, method="VideoLibrary.GetMovieSetDetails", key="set", properties=properties, isSet=True)

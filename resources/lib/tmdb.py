@@ -221,14 +221,14 @@ class TMDb(RequestAPI):
                 year_h = max(utils.try_parse_int(i.get('release_date', '')[:4]), year_h)
                 ratings.append(i.get('vote_average', '')) if i.get('vote_average') else None
                 votes += utils.try_parse_int(i.get('vote_count', 0))
-            year_l = year_l if year_l != 9999 else None
-            year_h = year_h if year_h else None
-            infoproperties['set.year.first'] = year_l or ''
-            infoproperties['set.year.last'] = year_h or ''
-            infoproperties['set.years'] = '{0} - {1}'.format(year_l, year_h) if year_l and year_h else ''
+            #year_l = year_l if year_l != 9999 else None
+            #year_h = year_h if year_h else None
+            #infoproperties['set.year.first'] = year_l or ''
+            #infoproperties['set.year.last'] = year_h or ''
+            #infoproperties['set.years'] = '{0} - {1}'.format(year_l, year_h) if year_l and year_h else ''
             infoproperties['set.rating'] = infoproperties['tmdb_rating'] = '{:0,.1f}'.format(sum(ratings) / len(ratings)) if len(ratings) else ''
             infoproperties['set.votes'] = infoproperties['tmdb_votes'] = '{:0,.0f}'.format(votes) if votes else ''
-            infoproperties['set.numitems'] = p or ''
+            #infoproperties['set.numitems'] = p or ''
         return infoproperties
 
     def get_trailer(self, item):

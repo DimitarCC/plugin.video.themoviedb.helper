@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.themoviedb.helper"
-version="2.4.0"
-name="TheMovieDb Helper"
-provider-name="jurialmunkey">
+<addon id="plugin.video.skin.info.provider"
+version="2.4.0a"
+name="Skin Info Provider"
+provider-name="dimitarcc">
 <requires>
   <import addon="xbmc.python" version="2.26.0"/>
   <import addon="script.module.simplecache" version="1.0.11" />

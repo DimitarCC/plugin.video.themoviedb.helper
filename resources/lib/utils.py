@@ -330,6 +330,14 @@ def merge_two_dicts(x, y):
     z.update(y)    # modifies z with y's keys and values & returns None
     return z
 
+def merge_dicts_overwrite_empty(x, y):
+    my_dict = x.copy()
+    for k, v in y.items():
+       if not k in x or x[k] == '':
+           my_dict[k] = v
+
+    return my_dict
+
 
 def make_kwparams(params):
     tempparams = params.copy()

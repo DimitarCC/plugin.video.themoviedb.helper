@@ -1,6 +1,7 @@
 import xbmc
 import xbmcgui
 from resources.lib.plugin import Plugin
+from resources.lib.kodilibrary import KodiLibrary
 import resources.lib.utils as utils
 _setmain = {
     'label', 'icon', 'poster', 'thumb', 'fanart', 'discart', 'clearart', 'clearlogo', 'landscape', 'banner',
@@ -85,6 +86,7 @@ class ServiceMonitor(Plugin):
 
     def get_cur_item(self):
         self.dbtype = self.get_dbtype()
+        self.dbid = self.get_dbid()
         self.imdb_id = self.get_infolabel('IMDBNumber')
         self.query = self.get_infolabel('TvShowTitle') or self.get_infolabel('Title') or self.get_infolabel('Label')
         self.year = self.get_infolabel('year')
@@ -104,7 +106,7 @@ class ServiceMonitor(Plugin):
             self.get_container()
             if self.is_same_item():
                 return  # Current item was the previous item so no need to do a look-up
-
+            self.home.setProperty('TMDbHelper.IsUpdating', 'True')
             self.cur_folder = '{0}{1}{2}'.format(
                 self.container, xbmc.getInfoLabel(self.get_dbtype()),
                 xbmc.getInfoLabel('{0}NumItems'.format(self.container)))
@@ -114,6 +116,11 @@ class ServiceMonitor(Plugin):
             if self.get_infolabel('Label') == '..':
                 self.clear_properties()
                 return  # Parent folder so clear properties and don't do look-up
+
+            if not self.is_same_item():
+                self.clear_properties()
+                self.home.clearProperty('TMDbHelper.IsUpdating')
+                return
 
             if self.dbtype in ['tvshows', 'seasons', 'episodes']:
                 tmdbtype = 'tv'
@@ -126,7 +133,7 @@ class ServiceMonitor(Plugin):
             else:
                 return
 
-            self.home.setProperty('TMDbHelper.IsUpdating', 'True')
+            #self.home.setProperty('TMDbHelper.IsUpdating', 'True')
 
             tmdb_id = self.get_tmdb_id(tmdbtype, self.imdb_id, self.query, self.year if tmdbtype == 'movie' else None)
             details = self.tmdb.get_detailed_item(tmdbtype, tmdb_id, season=self.season, episode=self.episode)
@@ -134,11 +141,13 @@ class ServiceMonitor(Plugin):
             details = self.get_omdb_ratings(details) if tmdbtype == 'movie' else details
             details = self.get_top250_rank(details) if tmdbtype == 'movie' else details
             details = self.get_fanarttv_artwork(details, tmdbtype)
-            details = self.get_trakt_ratings(
-                details, tmdbtype, tmdb_id, self.season, self.episode) if tmdbtype in ['movie', 'tv'] else details
+            details = self.get_trakt_ratings(details, tmdbtype, tmdb_id, self.season, self.episode) if tmdbtype in ['movie', 'tv'] else details
+            details = self.get_kodi_details(details)
 
-            if not details or not self.is_same_item():
+            if not details:
                 self.clear_properties()  # No details or the item changed so let's clear everything
+                #if not details:
+                #   self.home.setProperty('TMDbHelper.ListItem.MPAA', xbmc.getInfoLabel('Container.ListItem.MPAA'))
                 return
 
             self.set_properties(details)
@@ -249,7 +258,14 @@ class ServiceMonitor(Plugin):
         dbtype = 'actor' if dbtype == 'video' and 'type=person' in xbmc.getInfoLabel('{0}FolderPath'.format(self.containeritem)) else dbtype
         if xbmc.getCondVisibility("Window.IsVisible(DialogPVRInfo.xml) | Window.IsVisible(MyPVRChannels.xml) | Window.IsVisible(MyPVRGuide.xml)"):
             dbtype = 'tvshow'
+        isset = xbmc.getInfoLabel('{0}IsCollection'.format(self.containeritem))
+        if isset:
+            dbtype = 'set'
         return '{0}s'.format(dbtype) if dbtype else xbmc.getInfoLabel('Container.Content()') or ''
+    
+    def get_dbid(self):
+        dbid = xbmc.getInfoLabel('{0}DBID'.format(self.containeritem))
+        return dbid
 
     def get_infolabel(self, infolabel):
         return xbmc.getInfoLabel('{0}{1}'.format(self.containeritem, infolabel))

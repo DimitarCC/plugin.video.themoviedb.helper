@@ -130,3 +130,36 @@ class Plugin(object):
             kodidatabase = KodiLibrary(dbtype='episode', tvshowid=dbid)
         if dbid and kodidatabase and season and episode:
             return kodidatabase.get_info('dbid', season=season, episode=episode)
+
+    def get_kodi_details(self, item):
+        #return item
+        if not self.dbid or self.dbid == '':
+            return item
+
+        details = {}
+        if self.dbtype == 'movies':
+            details = KodiLibrary().get_movie_details(self.dbid)
+        if self.dbtype == 'tvshows':
+            details = KodiLibrary().get_tvshow_details(self.dbid)
+        if self.dbtype == 'episodes':
+            details = KodiLibrary().get_episode_details(self.dbid)
+        if self.dbtype == 'sets':
+            details = KodiLibrary().get_movieset(self.dbid)
+            #utils.kodi_log('SetCount{0}'.format(item['infoproperties']['set.numitems']), 2)
+
+        if not details:
+            return item
+
+        #self.icon = details.get('icon') or self.icon
+        #self.thumb = details.get('thumb') or self.thumb
+        #self.poster = details.get('poster') or self.poster
+        #self.fanart = details.get('fanart') or self.fanart
+        #self.landscape = details.get('landscape') or self.landscape
+        #self.clearart = details.get('clearart') or self.clearart
+        #self.clearlogo = details.get('clearlogo') or self.clearlogo
+        #self.discart = details.get('discart') or self.discart
+        #self.cast = self.cast or details.get('cast', [])
+        item['infolabels'] = utils.merge_dicts_overwrite_empty(item.get('infolabels', {}), details.get('infolabels', {}))
+        item['infoproperties'] = utils.merge_dicts_overwrite_empty(item.get('infoproperties', {}), details.get('infoproperties', {})) 
+        #self.streamdetails = details.get('streamdetails', {})
+        return item
