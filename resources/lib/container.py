@@ -50,7 +50,10 @@ class Container(Plugin):
         for k, v in self.params.items():
             if not k or not v:
                 continue
-            xbmcplugin.setProperty(self.handle, u'Param.{}'.format(k), u'{}'.format(v))  # Set params to container properties
+            try:
+                xbmcplugin.setProperty(self.handle, u'Param.{}'.format(k), u'{}'.format(v))  # Set params to container properties
+            except Exception as exc:
+                utils.kodi_log(u'Error: {}\nUnable to set Param.{} to {}'.format(exc, k, v), 1)
         xbmcplugin.addSortMethod(self.handle, xbmcplugin.SORT_METHOD_UNSORTED)
         xbmcplugin.addSortMethod(self.handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE)
         xbmcplugin.addSortMethod(self.handle, xbmcplugin.SORT_METHOD_LASTPLAYED)
@@ -264,17 +267,20 @@ class Container(Plugin):
 
             # Get DBID From Library
             i.dbid = self.get_db_info(
-                info='dbid',
-                tmdbtype=self.item_tmdbtype,
-                imdb_id=i.imdb_id,
+                info='dbid', tmdbtype=self.item_tmdbtype,
+                imdb_id=i.infoproperties.get('tvshow.imdb_id') or i.infoproperties.get('imdb_id'),
                 tmdb_id=i.infoproperties.get('tvshow.tmdb_id') or i.infoproperties.get('tmdb_id'),
                 tvdb_id=i.infoproperties.get('tvshow.tvdb_id') or i.infoproperties.get('tvdb_id'),
-                originaltitle=i.infolabels.get('originaltitle'),
-                title=i.infolabels.get('title'),
-                year=i.infolabels.get('year'),
-                tvshowtitle=i.infolabels.get('tvshowtitle'),
                 season=i.infolabels.get('season'),
                 episode=i.infolabels.get('episode'))
+
+            # Get TVSHOW DBID for episodes / seasons
+            if self.item_tmdbtype in ['season', 'episode']:
+                i.tvshow_dbid = self.get_db_info(
+                    info='dbid', tmdbtype='tv',
+                    imdb_id=i.infoproperties.get('tvshow.imdb_id'),
+                    tmdb_id=i.infoproperties.get('tvshow.tmdb_id'),
+                    tvdb_id=i.infoproperties.get('tvshow.tvdb_id'))
 
             # Special Property Because Plugin Category not Available in Widgets
             i.infoproperties['widget'] = self.plugincategory
@@ -343,10 +349,10 @@ class Container(Plugin):
     def add_userdiscover_method_property(self, header, tmdbtype, usedetails, old_label=None, old_value=None):
         if old_label and old_value:
             if xbmcgui.Dialog().yesno(
-                    '{} Exists'.format(tmdbtype.capitalize()),
-                    'A value has already been set for this parameter:', old_label,
-                    'Do you wish to clear the existing items or add more?',
-                    yeslabel='Clear Items', nolabel='Add Items'):
+                    '{} {}'.format(tmdbtype.capitalize(), self.addon.getLocalizedString(32098)),
+                    self.addon.getLocalizedString(32099) + ':', old_label,
+                    self.addon.getLocalizedString(32100),
+                    yeslabel=self.addon.getLocalizedString(32101), nolabel=self.addon.getLocalizedString(32102)):
                 return
             self.new_property_label = old_label
             self.new_property_value = old_value
@@ -358,27 +364,28 @@ class Container(Plugin):
         new_value = self.tmdb.get_tmdb_id(
             tmdbtype, query=new_label, selectdialog=True, longcache=True, usedetails=usedetails, returntuple=True)
         if not new_value:
-            if xbmcgui.Dialog().yesno('No Value Added', 'TMDb ID for {} not found or none selected.\nDo you want to add another value?'.format(new_label)):
+            if xbmcgui.Dialog().yesno(self.addon.getLocalizedString(32103), self.addon.getLocalizedString(32104).format(new_label)):
                 self.add_userdiscover_method_property(header, tmdbtype, usedetails)
             return
 
         new_value = (utils.try_encode_string(new_value[0]), new_value[1])
         self.new_property_label = '{0} / {1}'.format(self.new_property_label, new_value[0]) if self.new_property_label else new_value[0]
         self.new_property_value = '{0} / {1}'.format(self.new_property_value, new_value[1]) if self.new_property_value else '{}'.format(new_value[1])
-        if xbmcgui.Dialog().yesno('Added {}'.format(new_value[0]), '{}\nDo you want to add another value?'.format(self.new_property_label)):
+        if xbmcgui.Dialog().yesno('{} {}'.format(self.addon.getLocalizedString(32106), new_value[0]), '{}\n{}'.format(self.new_property_label, self.addon.getLocalizedString(32105))):
             self.add_userdiscover_method_property(header, tmdbtype, usedetails)
 
     def set_userdiscover_separator_property(self):
         choice = xbmcgui.Dialog().yesno(
-            'Set Match Method',
-            'Choose matching method for parameters with multiple values.',
-            yeslabel='Match ANY Value', nolabel='Match ALL Values')
+            self.addon.getLocalizedString(32107),
+            self.addon.getLocalizedString(32108),
+            yeslabel=self.addon.getLocalizedString(32109), nolabel=self.addon.getLocalizedString(32110))
         self.new_property_value = 'OR' if choice else 'AND'
         self.new_property_label = 'ANY' if choice else 'ALL'
 
-    def set_userdiscover_selectlist_properties(self, data_list=None, header='Select Items', multiselect=True):
+    def set_userdiscover_selectlist_properties(self, data_list=None, header=None, multiselect=True):
         if not data_list:
             return
+        header = header or self.addon.getLocalizedString(32111)
         func = xbmcgui.Dialog().multiselect if multiselect else xbmcgui.Dialog().select
         dialog_list = [i.get('name') for i in data_list]
         select_list = func(header, dialog_list)
@@ -399,7 +406,7 @@ class Container(Plugin):
         if not data_list:
             return
         data_list = data_list.get('genres', [])
-        self.set_userdiscover_selectlist_properties(data_list, header='Select Genres')
+        self.set_userdiscover_selectlist_properties(data_list, header=self.addon.getLocalizedString(32112))
 
     def set_userdiscover_method_property(self):
         method = self.params.get('method')
@@ -412,25 +419,25 @@ class Container(Plugin):
         tmdbtype = self.params.get('type')
         inputtype = xbmcgui.INPUT_ALPHANUM
         if any(i in method for i in ['year', 'vote_', '_runtime', '_networks']):
-            header = 'Enter '
+            header = self.addon.getLocalizedString(32114) + ' '
             inputtype = xbmcgui.INPUT_NUMERIC
         elif '_date' in method:
-            header = 'Enter '
-            affix = ' YYYY-MM-DD\nAlso accepts X days relative from today in the format T-X or T+X (e.g. T-10 is ten days ago)'
+            header = self.addon.getLocalizedString(32114) + ' '
+            affix = ' YYYY-MM-DD\n' + self.addon.getLocalizedString(32113)
         elif '_genres' in method:
-            label = 'Genre'
+            label = xbmc.getLocalizedString(515)
             tmdbtype = 'genre'
         elif '_companies' in method:
-            label = 'Company'
+            label = self.addon.getLocalizedString(32115)
             tmdbtype = 'company'
         elif '_networks' in method:
-            label = 'Network'
+            label = self.addon.getLocalizedString(32116)
             tmdbtype = 'company'
         elif '_keywords' in method:
-            label = 'Keyword'
+            label = self.addon.getLocalizedString(32117)
             tmdbtype = 'keyword'
         elif any(i in method for i in ['_cast', '_crew', '_people']):
-            label = 'Person'
+            label = self.addon.getLocalizedString(32118)
             tmdbtype = 'person'
             usedetails = True
         header = '{0}{1}{2}'.format(header, label, affix)
@@ -443,9 +450,9 @@ class Container(Plugin):
         elif '_genres' in method:
             self.set_userdiscover_genre_property()
         elif 'with_release_type' in method:
-            self.set_userdiscover_selectlist_properties(constants.USER_DISCOVER_RELEASETYPES, header='Select Release Types')
+            self.set_userdiscover_selectlist_properties(constants.USER_DISCOVER_RELEASETYPES, header=self.addon.getLocalizedString(32119))
         elif 'region' in method:
-            self.set_userdiscover_selectlist_properties(constants.USER_DISCOVER_REGIONS, header='Select Region for Release', multiselect=False)
+            self.set_userdiscover_selectlist_properties(constants.USER_DISCOVER_REGIONS, header=self.addon.getLocalizedString(32120), multiselect=False)
         elif 'with_runtime' not in method and 'with_networks' not in method and any(i in method for i in ['with_', 'without_']):
             self.add_userdiscover_method_property(header, tmdbtype, usedetails, old_label=old_label, old_value=old_value)
         else:
@@ -454,7 +461,7 @@ class Container(Plugin):
 
     def set_userdiscover_sortby_property(self):
         sort_method_list = self.get_userdiscover_sortmethods()
-        sort_method = xbmcgui.Dialog().select('Select Sort Method', sort_method_list)
+        sort_method = xbmcgui.Dialog().select(xbmc.getLocalizedString(39010), sort_method_list)
         self.new_property_label = self.new_property_value = sort_method_list[sort_method] if sort_method > -1 else None
 
     def get_userdiscover_affix(self, method):
@@ -555,7 +562,7 @@ class Container(Plugin):
             url={'info': 'details', 'type': 'episode'})
 
     def list_librarycalendar_episodes(self):
-        kodidb = KodiLibrary(dbtype='tvshow')
+        kodidb = KodiLibrary(dbtype='tvshow', attempt_reconnect=True)
 
         # Get calendar items from Trakt and check if matching show in kodi library
         # Widened calendar date range by 24hrs each side to accomodate timezone conversion as Trakt is UTC 00:00
@@ -568,8 +575,7 @@ class Container(Plugin):
                 'dbid',
                 tmdb_id=i.get('show', {}).get('ids', {}).get('tmdb'),
                 tvdb_id=i.get('show', {}).get('ids', {}).get('tvdb'),
-                imdb_id=i.get('show', {}).get('ids', {}).get('imdb'),
-                title=i.get('show', {}).get('title'))]
+                imdb_id=i.get('show', {}).get('ids', {}).get('imdb'))]
 
         items = []
         for i in traktitems:
@@ -857,7 +863,7 @@ class Container(Plugin):
             url['info'] = 'dir_search'
             url['clearcache'] = 'True'
             url.pop('query', '')
-            listitem = ListItem(label='Clear Search History', icon=icon)
+            listitem = ListItem(label=self.addon.getLocalizedString(32121), icon=icon)
             listitem.set_url_props(self.params, 'container')
             listitem.set_url_props(url, 'item')
             listitem.create_listitem(self.handle, **url)

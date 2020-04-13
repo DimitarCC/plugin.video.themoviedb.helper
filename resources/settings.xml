@@ -23,8 +23,8 @@
     </category>
     <category label="$LOCALIZE[14022]">
         <setting label="$ADDON[plugin.video.skin.info.provider 32074]" type="lsep"/>
-        <setting label="$LOCALIZE[342]" type="folder" id="movies_library" source="" option="writeable" default="special://profile/addon_data/plugin.video.skin.info.provider/movies/"/>
-        <setting label="$ADDON[plugin.video.skin.info.provider 32075]" type="folder" id="tvshows_library" source="" option="writeable" default="special://profile/addon_data/plugin.video.skin.info.provider/tvshows/"/>
+        <setting label="$LOCALIZE[342]" type="folder" id="movies_library" source="video" option="writeable" default="special://profile/addon_data/plugin.video.skin.info.provider/movies/"/>
+        <setting label="$ADDON[plugin.video.skin.info.provider 32075]" type="folder" id="tvshows_library" source="video" option="writeable" default="special://profile/addon_data/plugin.video.skin.info.provider/tvshows/"/>
         <setting label="$ADDON[plugin.video.skin.info.provider 32076]" type="bool" id="auto_update" default="true" />
         <setting label="$ADDON[plugin.video.skin.info.provider 32086]" type="bool" id="library_autoupdate" default="false" />
         <setting label="$LOCALIZE[10039]" type="lsep"/>
@@ -48,25 +48,26 @@
         <setting label="$ADDON[plugin.video.skin.info.provider 32078]" type="bool" id="trakt_extendlimit" default="false" subsetting="true"/>
         <setting label="$ADDON[plugin.video.skin.info.provider 32013]" type="bool" id="trakt_management" default="false" subsetting="true"/>
     </category>
-    <category label="$ADDON[plugin.video.skin.info.provider 32014]">        
+    <category label="$ADDON[plugin.video.skin.info.provider 32014]">
         <setting label="$ADDON[plugin.video.skin.info.provider 32033]" type="lsep"/>
         <setting label="$ADDON[plugin.video.skin.info.provider 32024]" type="action" action="RunScript(plugin.video.skin.info.provider, set_defaultplayer=movie)" id="default_player_movies" />
         <setting label="$ADDON[plugin.video.skin.info.provider 32025]" type="action" action="RunScript(plugin.video.skin.info.provider, set_defaultplayer=tv)" id="default_player_episodes" />
-        <setting label="$ADDON[plugin.video.skin.info.provider 32027]" type="action" action="RunScript(plugin.video.skin.info.provider, clear_defaultplayers)" />
+        <setting label="$ADDON[plugin.video.skin.info.provider 32027]" type="action" action="RunScript(plugin.video.skin.info.provider, clear_defaultplayers)" visible="False"/>
+        <setting label="$ADDON[plugin.video.skin.info.provider 32094]" type="bool" id="default_player_local" default="True" />
         <setting label="$ADDON[plugin.video.skin.info.provider 32036]" type="lsep"/>
         <setting label="$ADDON[plugin.video.skin.info.provider 32037]" type="bool" id="bundled_players" default="True" />
         <setting label="$ADDON[plugin.video.skin.info.provider 32016]" type="action" action="RunScript(plugin.video.skin.info.provider, update_players)" id="players_url" />
-        <setting label="$ADDON[plugin.video.skin.info.provider 32067]" type="lsep"/>
-        <setting label="$ADDON[plugin.video.skin.info.provider 32068]" type="bool" id="fuzzymatch_movie" default="False" />
-        <setting label="$ADDON[plugin.video.skin.info.provider 32069]" type="bool" id="fuzzymatch_tv" default="False" />
+        <!-- <setting label="$ADDON[plugin.video.skin.info.provider 32067]" type="lsep" visible="False"/> -->
+        <setting label="$ADDON[plugin.video.skin.info.provider 32068]" type="bool" id="fuzzymatch_movie" default="False" visible="False" />
+        <setting label="$ADDON[plugin.video.skin.info.provider 32069]" type="bool" id="fuzzymatch_tv" default="False" visible="False"/>
     </category>
     <category label="$LOCALIZE[10039]">
         <setting label="$LOCALIZE[14260]" type="lsep"/>
         <setting label="$ADDON[plugin.video.skin.info.provider 32066]" type="bool" id="debug_logging" default="False" />
         <!-- <setting label="$ADDON[plugin.video.skin.info.provider 32000]" type="text" id="tmdb_apikey"/>
         <setting label="$ADDON[plugin.video.skin.info.provider 32018]" type="text" id="fanarttv_apikey"/> -->
-        <setting label="$ADDON[plugin.video.skin.info.provider 32087]" type="bool" id="strm_method_resolvedurl" default="False" visible="false"/>
-        <setting label="$ADDON[plugin.video.skin.info.provider 32011]" type="text" id="trakt_token" default="" visible="false"/>
-        <setting label="$ADDON[plugin.video.skin.info.provider 32011]" type="text" id="last_refresh" default="" visible="false"/>
+        <setting label="$ADDON[plugin.video.skin.info.provider 32087]" type="bool" id="strm_method_resolvedurl" default="False" visible="False"/>
+        <setting label="$ADDON[plugin.video.skin.info.provider 32011]" type="text" id="trakt_token" default="" visible="False"/>
+        <setting label="$ADDON[plugin.video.skin.info.provider 32011]" type="text" id="last_refresh" default="" visible="False"/>
     </category>
 </settings>

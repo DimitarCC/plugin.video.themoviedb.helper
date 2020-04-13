@@ -1,3 +1,4 @@
+import re
 import xbmc
 import xbmcgui
 import xbmcvfs
@@ -11,9 +12,9 @@ from resources.lib.kodilibrary import KodiLibrary
 from resources.lib.traktapi import TraktAPI
 from resources.lib.listitem import ListItem
 try:
-    from urllib.parse import quote_plus  # Py3
+    from urllib.parse import quote_plus, quote  # Py3
 except ImportError:
-    from urllib import quote_plus  # Py2
+    from urllib import quote_plus, quote  # Py2
 
 
 def string_format_map(fmt, d):
@@ -34,6 +35,7 @@ class Player(Plugin):
         self.item = defaultdict(lambda: '+')
         self.itemlist, self.actions, self.players, self.identifierlist = [], [], {}, []
         self.is_local = None
+        self.dp_local = self.addon.getSettingBool('default_player_local')
         self.dp_movies = self.addon.getSettingString('default_player_movies')
         self.dp_episodes = self.addon.getSettingString('default_player_episodes')
         self.dp_movies_id = None
@@ -71,7 +73,7 @@ class Player(Plugin):
             if (
                     (label == self.dp_movies and self.itemtype == 'movie') or
                     (label == self.dp_episodes and self.itemtype == 'episode') or
-                    (label == u'{0} {1}'.format(self.addon.getLocalizedString(32061), 'Kodi'))):
+                    (label == u'{0} {1}'.format(self.addon.getLocalizedString(32061), 'Kodi') and self.dp_local)):
                 return i  # Play local or with default player if found
 
         # Check for fallbacks
@@ -162,7 +164,7 @@ class Player(Plugin):
                         if k == 'position':  # We're looking for an item position not an infolabel
                             if utils.try_parse_int(string_format_map(v, self.item)) != x:  # Format our position value
                                 break  # Not the item position we want so let's go to next item in folder
-                        elif not f.get(k) or string_format_map(v, self.item) not in u'{}'.format(f.get(k, '')):  # Format our value and check if it matches the infolabel key
+                        elif not f.get(k) or not re.match(string_format_map(v, self.item), u'{}'.format(f.get(k, ''))):  # Format our value and check if it regex matches the infolabel key
                             break  # Item's key value doesn't match value we are looking for so let's got to next item in folder
                     else:  # Item matched our criteria so let's open it up
                         resolve_url = True if f.get('filetype') == 'file' else False  # Set true for files so we can play
@@ -192,7 +194,9 @@ class Player(Plugin):
         self.itemtype, self.tmdb_id, self.season, self.episode = itemtype, tmdb_id, season, episode
         self.tmdbtype = 'tv' if self.itemtype in ['episode', 'tv'] else 'movie'
         self.details = self.tmdb.get_detailed_item(self.tmdbtype, tmdb_id, season=season, episode=episode)
-        self.item['imdb_id'] = self.details.get('infolabels', {}).get('imdbnumber')
+        self.item['tmdb_id'] = self.tmdb_id
+        self.item['imdb_id'] = self.details.get('infoproperties', {}).get('tvshow.imdb_id') or self.details.get('infoproperties', {}).get('imdb_id')
+        self.item['tvdb_id'] = self.details.get('infoproperties', {}).get('tvshow.tvdb_id') or self.details.get('infoproperties', {}).get('tvdb_id')
         self.item['originaltitle'] = self.details.get('infolabels', {}).get('originaltitle')
         self.item['title'] = self.details.get('infolabels', {}).get('tvshowtitle') or self.details.get('infolabels', {}).get('title')
         self.item['year'] = self.details.get('infolabels', {}).get('year')
@@ -257,7 +261,9 @@ class Player(Plugin):
             self.item[k + '_-'] = v.replace(' ', '-')
             self.item[k + '_escaped'] = v.replace(' ', '%2520')
             self.item[k + '_escaped+'] = v.replace(' ', '%252B')
-            self.item[k + '_url'] = quote_plus(utils.try_encode_string(v))
+            self.item[k + '_url'] = quote(utils.try_encode_string(v))
+            self.item[k + '_url+'] = quote_plus(utils.try_encode_string(v))
+            self.item[k + '_url_escaped+'] = quote(utils.try_encode_string(self.item[k + '_+']))
 
     def build_players(self, tmdbtype=None):
         basedirs = ['special://profile/addon_data/plugin.video.skin.info.provider/players/']
@@ -347,11 +353,10 @@ class Player(Plugin):
         return file
 
     def localmovie(self):
-        fuzzy_match = self.addon.getSettingBool('fuzzymatch_movie')
-        return self.localfile(KodiLibrary(dbtype='movie').get_info('file', fuzzy_match=fuzzy_match, **self.item))
+        # fuzzy_match = self.addon.getSettingBool('fuzzymatch_movie')
+        return self.localfile(KodiLibrary(dbtype='movie').get_info('file', fuzzy_match=False, **self.item))
 
     def localepisode(self):
-        fuzzy_match = self.addon.getSettingBool('fuzzymatch_tv')
-        fuzzy_match = True  # TODO: Get tvshow year to match against but for now force fuzzy match
-        dbid = KodiLibrary(dbtype='tvshow').get_info('dbid', fuzzy_match=fuzzy_match, **self.item)
+        # fuzzy_match = self.addon.getSettingBool('fuzzymatch_tv')
+        dbid = KodiLibrary(dbtype='tvshow').get_info('dbid', fuzzy_match=False, **self.item)
         return self.localfile(KodiLibrary(dbtype='episode', tvshowid=dbid).get_info('file', season=self.season, episode=self.episode))

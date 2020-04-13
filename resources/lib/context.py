@@ -3,11 +3,12 @@ import xbmc
 import xbmcvfs
 import xbmcaddon
 import xbmcgui
+from resources.lib.plugin import Plugin
 from resources.lib.traktapi import TraktAPI
 from resources.lib.kodilibrary import KodiLibrary
 import resources.lib.utils as utils
 _addon = xbmcaddon.Addon('plugin.video.skin.info.provider')
-
+_plugin = Plugin()
 
 def library_cleancontent_replacer(content, old, new):
     content = content.replace(old, new)
@@ -44,11 +45,12 @@ def library_createfile(filename, content, *args, **kwargs):
     *args = folders to create.
     """
     file_ext = kwargs.pop('file_ext', 'strm')
+    clean_url = kwargs.pop('clean_url', True)
     path = kwargs.pop('basedir', '')
     path = path.replace('\\', '/')
     if not path:
         return utils.kodi_log('ADD LIBRARY -- No basedir specified!', 2)
-    content = library_cleancontent(content)
+    content = library_cleancontent(content) if clean_url else content
     for folder in args:
         folder = utils.validify_filename(folder)
         path = '{}{}/'.format(path, folder)
@@ -58,16 +60,15 @@ def library_createfile(filename, content, *args, **kwargs):
         return utils.kodi_log('ADD LIBRARY -- No filename specified!', 2)
     if not library_createpath(path):
         xbmcgui.Dialog().ok(
-            'Add to Library',
-            'XBMCVFS reports unable to create path [B]{}[/B]'.format(path),
-            'If error persists and the folders are created correctly, '
-            'please disable folder path creation checking in TMDBHelper settings.')
-        return utils.kodi_log('ADD LIBRARY -- XBMCVFS unable to create path:\n{}'.format(path), 2)
+            xbmc.getLocalizedString(20444),
+            _addon.getLocalizedString(32122) + ' [B]{}[/B]'.format(path),
+            _addon.getLocalizedString(32123))
+        return utils.kodi_log(u'ADD LIBRARY -- XBMCVFS unable to create path:\n{}'.format(path), 2)
     filepath = '{}{}.{}'.format(path, utils.validify_filename(filename), file_ext)
     f = xbmcvfs.File(filepath, 'w')
-    f.write(str(content))
+    f.write(utils.try_encode_string(content))
     f.close()
-    utils.kodi_log('ADD LIBRARY -- Successfully added:\n{}\n{}'.format(filepath, content), 2)
+    utils.kodi_log(u'ADD LIBRARY -- Successfully added:\n{}\n{}'.format(filepath, content), 2)
 
 
 def library_create_nfo(tmdbtype, tmdb_id, *args, **kwargs):
@@ -76,25 +77,39 @@ def library_create_nfo(tmdbtype, tmdb_id, *args, **kwargs):
     library_createfile(filename, content, file_ext='nfo', *args, **kwargs)
 
 
-def library_addtvshow(basedir=None, folder=None, url=None, tmdb_id=None):
+def library_addtvshow(basedir=None, folder=None, url=None, tmdb_id=None, tvdb_id=None, imdb_id=None, p_dialog=None):
     if not basedir or not folder or not url:
         return
     seasons = library_cleancontent(url, details='info=seasons')
     seasons = KodiLibrary().get_directory(seasons)
     library_create_nfo('tv', tmdb_id, folder, basedir=basedir)
+    s_count = 0
+    s_total = len(seasons)
     for season in seasons:
+        s_count += 1
         if not season.get('season'):
             continue  # Skip special seasons S00
-        season_name = 'Season {}'.format(season.get('season'))
+        season_name = '{} {}'.format(xbmc.getLocalizedString(20373), season.get('season'))
+        p_dialog.update((s_count * 100) // s_total, message=u'Adding {} - {} to library...'.format(season.get('showtitle'), season_name)) if p_dialog else None
         episodes = KodiLibrary().get_directory(season.get('file'))
+        i_count = 0
+        i_total = len(episodes)
         for episode in episodes:
+            i_count += 1
             if not episode.get('episode'):
                 continue  # Skip special episodes E00
-            episode_path = library_cleancontent(episode.get('file'))
+            s_num = episode.get('season')
+            e_num = episode.get('episode')
             episode_name = 'S{:02d}E{:02d} - {}'.format(
-                utils.try_parse_int(episode.get('season')),
-                utils.try_parse_int(episode.get('episode')),
+                utils.try_parse_int(s_num),
+                utils.try_parse_int(e_num),
                 utils.validify_filename(episode.get('title')))
+            if _plugin.get_db_info(info='dbid', tmdbtype='episode', imdb_id=imdb_id, tmdb_id=tmdb_id, season=s_num, episode=e_num):
+                utils.kodi_log(u'Trakt List Add to Library\nFound {} - {} in library. Skipping...'.format(episode.get('showtitle'), episode_name))
+                p_dialog.update((i_count * 100) // i_total, message=u'Found {} in library. Skipping...'.format(episode_name)) if p_dialog else None
+                continue  # Skip added items
+            p_dialog.update((i_count * 100) // i_total, message=u'Adding {} to library...'.format(episode_name)) if p_dialog else None
+            episode_path = library_cleancontent(episode.get('file'))
             library_createfile(episode_name, episode_path, folder, season_name, basedir=basedir)
 
 
@@ -134,45 +149,78 @@ def library_userlist():
         if not request:
             return
 
-    d_head = 'Add Trakt list to Kodi library'
-    d_body = 'Do you wish to add this Trakt list to your Kodi library?'
-    d_body += '\n[B]{}[/B] by user [B]{}[/B]'.format(list_slug, user_slug)
-    d_body += '\n\n[B][COLOR=red]WARNING[/COLOR][/B] ' if len(request) > 20 else '\n\n'
-    d_body += 'This list contains [B]{}[/B] items.'.format(len(request))
+    i_count = 0
+    i_total = len(request)
+    d_head = _addon.getLocalizedString(32125)
+    d_body = _addon.getLocalizedString(32126)
+    d_body += '\n[B]{}[/B] {} [B]{}[/B]'.format(list_slug, _addon.getLocalizedString(32127), user_slug)
+    d_body += '\n\n[B][COLOR=red]{}[/COLOR][/B] '.format(xbmc.getLocalizedString(14117)) if i_total > 20 else '\n\n'
+    d_body += '{} [B]{}[/B] {}.'.format(_addon.getLocalizedString(32128), i_total, _addon.getLocalizedString(32129))
     if not xbmcgui.Dialog().yesno(d_head, d_body):
         return
 
-    xbmcgui.Dialog().notification('TMDbHelper', 'Adding items to library...')
-    with utils.busy_dialog():
-        basedir_movie = _addon.getSettingString('movies_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/movies/'
-        basedir_tv = _addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/tvshows/'
-        auto_update = _addon.getSettingBool('auto_update') or False
+    p_dialog = xbmcgui.DialogProgressBG()
+    p_dialog.create('TMDbHelper', 'Adding items to library...')
+    basedir_movie = _addon.getSettingString('movies_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/movies/'
+    basedir_tv = _addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/tvshows/'
+    auto_update = _addon.getSettingBool('auto_update') or False
+    all_movies = []
+    all_tvshows = []
 
-        for i in request:
-            i_type = i.get('type')
-            if i_type not in ['movie', 'show']:
-                continue  # Only get movies or tvshows
+    for i in request:
+        i_count += 1
+        i_type = i.get('type')
+        if i_type not in ['movie', 'show']:
+            continue  # Only get movies or tvshows
 
-            item = i.get(i_type, {})
-            tmdb_id = item.get('ids', {}).get('tmdb')
-            if not tmdb_id:
-                continue  # Don't bother if there isn't a tmdb_id as lookup is too expensive for long lists
+        item = i.get(i_type, {})
+        tmdb_id = item.get('ids', {}).get('tmdb')
+        imdb_id = item.get('ids', {}).get('imdb')
+        tvdb_id = item.get('ids', {}).get('tvdb')
+        if not tmdb_id:
+            continue  # Don't bother if there isn't a tmdb_id as lookup is too expensive for long lists
 
-            if i_type == 'movie':  # Add any movies
-                content = 'plugin://plugin.video.skin.info.provider/?info=play&tmdb_id={}&type=movie'.format(tmdb_id)
-                folder = '{} ({})'.format(item.get('title'), item.get('year'))
-                movie_name = '{} ({})'.format(item.get('title'), item.get('year'))
-                xbmcgui.Dialog().notification('TMDbHelper', 'Adding {} to library...'.format(movie_name))
-                library_createfile(movie_name, content, folder, basedir=basedir_movie)
-                library_create_nfo('movie', tmdb_id, folder, basedir=basedir_movie)
+        if i_type == 'movie':  # Add any movies
+            all_movies.append(item.get('title'))
+            content = 'plugin://plugin.video.skin.info.provider/?info=play&tmdb_id={}&type=movie'.format(tmdb_id)
+            folder = u'{} ({})'.format(item.get('title'), item.get('year'))
+            movie_name = u'{} ({})'.format(item.get('title'), item.get('year'))
+            if _plugin.get_db_info(info='dbid', tmdbtype='movie', imdb_id=imdb_id, tmdb_id=tmdb_id):
+                p_dialog.update((i_count * 100) // i_total, message=u'Found {} in library. Skipping...'.format(movie_name))
+                utils.kodi_log(u'Trakt List Add to Library\nFound {} in library. Skipping...'.format(movie_name), 0)
+                continue
+            p_dialog.update((i_count * 100) // i_total, message=u'Adding {} to library...'.format(movie_name))
+            utils.kodi_log(u'Adding {} to library...'.format(movie_name), 0)
+            library_createfile(movie_name, content, folder, basedir=basedir_movie)
+            library_create_nfo('movie', tmdb_id, folder, basedir=basedir_movie)
 
-            if i_type == 'show':  # Add whole tvshows
-                content = 'plugin://plugin.video.skin.info.provider/?info=seasons&nextpage=True&tmdb_id={}&type=tv'.format(tmdb_id)
-                folder = item.get('title')
-                xbmcgui.Dialog().notification('TMDbHelper', 'Adding {} to library...'.format(item.get('title')))
-                library_addtvshow(basedir=basedir_tv, folder=folder, url=content, tmdb_id=tmdb_id)
+        if i_type == 'show':  # Add whole tvshows
+            all_tvshows.append(item.get('title'))
+            content = 'plugin://plugin.video.skin.info.provider/?info=seasons&nextpage=True&tmdb_id={}&type=tv'.format(tmdb_id)
+            folder = u'{}'.format(item.get('title'))
+            p_dialog.update((i_count * 100) // i_total, message=u'Adding {} to library...'.format(item.get('title')))
+            library_addtvshow(basedir=basedir_tv, folder=folder, url=content, tmdb_id=tmdb_id, imdb_id=imdb_id, tvdb_id=tvdb_id, p_dialog=p_dialog)
 
+    p_dialog.close()
+    create_playlist(all_movies, 'movies', user_slug, list_slug) if all_movies else None
+    create_playlist(all_tvshows, 'tvshows', user_slug, list_slug) if all_tvshows else None
     xbmc.executebuiltin('UpdateLibrary(video)') if auto_update else None
+
+
+def create_playlist(items, dbtype, user_slug, list_slug):
+    """
+    Creates a smart playlist from a list of titles
+    """
+    filename = '{}-{}-{}'.format(user_slug, list_slug, dbtype)
+    filepath = 'special://profile/playlists/video/'
+    fcontent = u'<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>'
+    fcontent += u'\n<smartplaylist type="{}">'.format(dbtype)
+    fcontent += u'\n    <name>{} by {} ({})</name>'.format(list_slug, user_slug, dbtype)
+    fcontent += u'\n    <match>any</match>'
+    for i in items:
+        fcontent += u'\n    <rule field="title" operator="is"><value>{}</value></rule>'.format(i)
+    fcontent += u'\n</smartplaylist>'
+    library_createfile(filename, fcontent, basedir=filepath, file_ext='xsp', clean_url=False)
 
 
 def library():
@@ -267,7 +315,7 @@ def action(action, tmdb_id=None, tmdb_type=None, season=None, episode=None, labe
 
     dialog_header = 'Trakt {0}'.format(action.capitalize())
     dialog_text = xbmcaddon.Addon().getLocalizedString(32065) if boolean == 'add' else xbmcaddon.Addon().getLocalizedString(32064)
-    dialog_text = dialog_text.format(label, action.capitalize(), tmdb_type, tmdb_id)
+    dialog_text = dialog_text.format(utils.try_decode_string(label), action.capitalize(), tmdb_type, tmdb_id)
     dialog_text = dialog_text + ' Season: {}  Episode: {}'.format(season, episode) if dbtype == 'episode' else dialog_text
     if not xbmcgui.Dialog().yesno(dialog_header, dialog_text):
         return
