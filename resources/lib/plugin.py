@@ -170,7 +170,7 @@ class Plugin(object):
         if self.dbtype == 'episodes':
             details = KodiLibrary().get_episode_details(self.dbid)
         if self.dbtype == 'sets':
-            details = KodiLibrary().get_movieset(self.dbid)
+            details = KodiLibrary().get_movieset_details(self.dbid)
             #utils.kodi_log('SetCount{0}'.format(item['infoproperties']['set.numitems']), 2)
 
         if not details:

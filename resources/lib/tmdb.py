@@ -1,4 +1,5 @@
 import xbmc
+import xbmcgui
 import resources.lib.utils as utils
 from resources.lib.requestapi import RequestAPI
 from resources.lib.listitem import ListItem
@@ -30,6 +31,7 @@ class TMDb(RequestAPI):
         self.exclude_key = exclude_key if exclude_key else None
         self.exclude_value = exclude_value if exclude_value else None
         self.library = 'video'
+        self.home = xbmcgui.Window(10000)
 
     def get_title(self, item):
         if item.get('title'):
