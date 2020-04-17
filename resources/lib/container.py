@@ -263,7 +263,7 @@ class Container(Plugin):
                         if self.addon.getSettingBool('hide_unaired_movies') and self.item_tmdbtype in ['movie']:
                             continue
                 except Exception as exc:
-                    utils.kodi_log('Error: {}'.format(exc), 1)
+                    utils.kodi_log(u'Error: {}'.format(exc), 1)
 
             # Get DBID From Library
             i.dbid = self.get_db_info(
@@ -349,7 +349,7 @@ class Container(Plugin):
     def add_userdiscover_method_property(self, header, tmdbtype, usedetails, old_label=None, old_value=None):
         if old_label and old_value:
             if xbmcgui.Dialog().yesno(
-                    '{} {}'.format(tmdbtype.capitalize(), self.addon.getLocalizedString(32098)),
+                    u'{} {}'.format(tmdbtype.capitalize(), self.addon.getLocalizedString(32098)),
                     self.addon.getLocalizedString(32099) + ':', old_label,
                     self.addon.getLocalizedString(32100),
                     yeslabel=self.addon.getLocalizedString(32101), nolabel=self.addon.getLocalizedString(32102)):
@@ -371,7 +371,7 @@ class Container(Plugin):
         new_value = (utils.try_encode_string(new_value[0]), new_value[1])
         self.new_property_label = '{0} / {1}'.format(self.new_property_label, new_value[0]) if self.new_property_label else new_value[0]
         self.new_property_value = '{0} / {1}'.format(self.new_property_value, new_value[1]) if self.new_property_value else '{}'.format(new_value[1])
-        if xbmcgui.Dialog().yesno('{} {}'.format(self.addon.getLocalizedString(32106), new_value[0]), '{}\n{}'.format(self.new_property_label, self.addon.getLocalizedString(32105))):
+        if xbmcgui.Dialog().yesno(u'{} {}'.format(self.addon.getLocalizedString(32106), new_value[0]), u'{}\n{}'.format(self.new_property_label, self.addon.getLocalizedString(32105))):
             self.add_userdiscover_method_property(header, tmdbtype, usedetails)
 
     def set_userdiscover_separator_property(self):
@@ -753,12 +753,12 @@ class Container(Plugin):
             lock = '{}.{}={}'.format(lock, k, v) if lock else '{}={}'.format(k, v)
         cur_lock = xbmcgui.Window(10000).getProperty('TMDbHelper.Player.ResolvedUrl')
         if cur_lock == lock:
-            utils.kodi_log('Container -- Play IsLocked:\n{0}'.format(self.params), 1)
+            utils.kodi_log(u'Container -- Play IsLocked:\n{0}'.format(self.params), 1)
             return cur_lock
         xbmcgui.Window(10000).setProperty('TMDbHelper.Player.ResolvedUrl', lock)
 
     def list_play(self):
-        utils.kodi_log('Container -- Attempting to Play Item...:\n{0}'.format(self.params), 1)
+        utils.kodi_log(u'Container -- Attempting to Play Item...:\n{0}'.format(self.params), 1)
         """
         Kodi does 5x retries to resolve url but we don't use this method so we need to catch it
         Instead we just give a blank resolved url if a strm file or do nothing if not
@@ -773,7 +773,7 @@ class Container(Plugin):
         # Check we have a TMDb ID and do nothing if we can't get one
         self.list_getid()
         if not self.params.get('type') or not self.params.get('tmdb_id'):
-            utils.kodi_log('Container -- Play No Type or TMDb_ID:\n{0}'.format(self.params), 1)
+            utils.kodi_log(u'Container -- Play No Type or TMDb_ID:\n{0}'.format(self.params), 1)
             return
 
         # Build our player script command and run it

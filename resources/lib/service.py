@@ -1,5 +1,6 @@
 import xbmc
 import xbmcgui
+from threading import Thread
 from resources.lib.plugin import Plugin
 from resources.lib.kodilibrary import KodiLibrary
 import resources.lib.utils as utils
@@ -17,6 +18,20 @@ _setprop = {
     'rottentomatoes_consensus', 'rottentomatoes_usermeter', 'rottentomatoes_userreviews', 'trakt_rating', 'trakt_votes'}
 
 
+class CronJob(Thread):
+    def __init__(self, poll_time=120):
+        Thread.__init__(self)
+        self.kodimonitor = xbmc.Monitor()
+        self.exit = False
+        self.poll_time = 60 * poll_time
+
+    def run(self):
+        while not self.kodimonitor.abortRequested() and not self.exit and self.poll_time:
+            if self.addon.getSettingBool('library_autoupdate'):
+                xbmc.executebuiltin('RunScript(plugin.video.themoviedb.helper,library_autoupdate)')
+            self.kodimonitor.waitForAbort(self.poll_time)
+
+
 class ServiceMonitor(Plugin):
     def __init__(self):
         super(ServiceMonitor, self).__init__()
@@ -31,19 +46,22 @@ class ServiceMonitor(Plugin):
         self.properties = set()
         self.indxproperties = set()
         self.home = xbmcgui.Window(10000)
+        self.cron_job = CronJob(self.addon.getSettingInt('library_autoupdate_interval'))
+        self.cron_job.setName('Cron Thread')
         self.run_monitor()
 
     def run_monitor(self):
         self.home.setProperty('TMDbHelper.ServiceStarted', 'True')
 
-        if self.addon.getSettingBool('library_autoupdate'):
-            xbmc.executebuiltin('RunScript(plugin.video.skin.info.provider,library_autoupdate)')
-
         if self.addon.getSettingString('trakt_token'):
             self.home.setProperty('TMDbHelper.TraktIsAuth', 'True')
+            self.get_trakt_usernameslug()
+
+        self.cron_job.start()
 
         while not self.kodimonitor.abortRequested() and not self.exit:
             if self.home.getProperty('TMDbHelper.ServiceStop'):
+                self.cron_job.exit = True
                 self.exit = True
 
             elif xbmc.getCondVisibility("!Skin.HasSetting(TMDbHelper.Service)"):
@@ -154,13 +172,13 @@ class ServiceMonitor(Plugin):
             self.set_properties(details)
 
         except Exception as exc:
-            utils.kodi_log('Func: get_listitem\n{0}'.format(exc), 1)
+            utils.kodi_log(u'Func: get_listitem\n{0}'.format(exc), 1)
 
     def clear_property(self, key):
         try:
             self.home.clearProperty('TMDbHelper.ListItem.{0}'.format(key))
         except Exception as exc:
-            utils.kodi_log('Func: clear_property\n{0}{1}'.format(key, exc), 1)
+            utils.kodi_log(u'Func: clear_property\n{0}{1}'.format(key, exc), 1)
 
     def clear_properties(self):
         for k in self.properties:
@@ -175,7 +193,7 @@ class ServiceMonitor(Plugin):
         try:
             self.home.setProperty('TMDbHelper.ListItem.{0}'.format(key), u'{0}'.format(value))
         except Exception as exc:
-            utils.kodi_log('{0}{1}'.format(key, exc), 1)
+            utils.kodi_log(u'{0}{1}'.format(key, exc), 1)
 
     def set_indx_properties(self, dictionary):
         if not isinstance(dictionary, dict):
@@ -190,7 +208,7 @@ class ServiceMonitor(Plugin):
                 self.set_property(k, v)
                 indxprops.add(k)
             except Exception as exc:
-                utils.kodi_log('k: {0} v: {1} e: {2}'.format(k, v, exc), 1)
+                utils.kodi_log(u'k: {0} v: {1} e: {2}'.format(k, v, exc), 1)
 
         for k in (self.indxproperties - indxprops):
             self.clear_property(k)
@@ -207,7 +225,7 @@ class ServiceMonitor(Plugin):
                     try:
                         v = ' / '.join(v)
                     except Exception as exc:
-                        utils.kodi_log('Func: set_iter_properties - list\n{0}'.format(exc), 1)
+                        utils.kodi_log(u'Func: set_iter_properties - list\n{0}'.format(exc), 1)
                 self.properties.add(k)
                 self.set_property(k, v)
             except Exception as exc:
@@ -222,7 +240,7 @@ class ServiceMonitor(Plugin):
             self.properties.add(prop)
             self.set_property(prop, joinlist)
         except Exception as exc:
-            utils.kodi_log('Func: set_list_properties\n{0}'.format(exc), 1)
+            utils.kodi_log(u'Func: set_list_properties\n{0}'.format(exc), 1)
 
     def set_time_properties(self, duration):
         try:
@@ -280,5 +298,5 @@ class ServiceMonitor(Plugin):
                 return self.tmdb.get_tmdb_id(itemtype=itemtype, imdb_id=imdb_id)
             return self.tmdb.get_tmdb_id(itemtype=itemtype, query=query, year=year)
         except Exception as exc:
-            utils.kodi_log('Func: get_tmdb_id\n{0}'.format(exc), 1)
+            utils.kodi_log(u'Func: get_tmdb_id\n{0}'.format(exc), 1)
             return

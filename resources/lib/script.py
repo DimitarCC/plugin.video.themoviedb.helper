@@ -171,7 +171,7 @@ class Script(Plugin):
         # Check that list 9999 exists
         controllist = window.getControl(9999)
         if not controllist:
-            utils.kodi_log('SKIN ERROR!\nList control 9999 not available in Window {0}'.format(call_id), 1)
+            utils.kodi_log(u'SKIN ERROR!\nList control 9999 not available in Window {0}'.format(call_id), 1)
             return self.call_reset()  # Clear and exit if timeout or user closed base window
         controllist.reset()
 
@@ -283,7 +283,7 @@ class Script(Plugin):
                 return
             tmdb_id = self.tmdb.get_tmdb_id(self.params.get('type'), query=item, selectdialog=True)
             if not tmdb_id:
-                utils.kodi_log('Unable to find TMDb ID!\nQuery: {0} Type: {1}'.format(self.params.get('add_query'), self.params.get('type')), 1)
+                utils.kodi_log(u'Unable to find TMDb ID!\nQuery: {0} Type: {1}'.format(self.params.get('add_query'), self.params.get('type')), 1)
                 return
             url = 'plugin://plugin.video.skin.info.provider/?info=details&amp;type={0}&amp;tmdb_id={1}'.format(self.params.get('type'), tmdb_id)
             if url == self.home.getProperty(self.prefixcurrent):
@@ -326,15 +326,14 @@ class Script(Plugin):
         self.call_window()
 
     def play(self):
-        utils.kodi_log('Script -- Attempting to play item:\n{0}'.format(self.params), 2)
+        utils.kodi_log(u'Script -- Attempting to play item:\n{0}'.format(self.params), 2)
         if not self.params.get('play') or not self.params.get('tmdb_id'):
             return
-        with utils.busy_dialog():
-            Player().play(
-                itemtype=self.params.get('play'), tmdb_id=self.params.get('tmdb_id'),
-                season=self.params.get('season'), episode=self.params.get('episode'),
-                force_dialog=self.params.get('force_dialog'))
-            self.home.clearProperty('TMDbHelper.Player.ResolvedUrl')  # Clear our lock property
+        Player().play(
+            itemtype=self.params.get('play'), tmdb_id=self.params.get('tmdb_id'),
+            season=self.params.get('season'), episode=self.params.get('episode'),
+            force_dialog=self.params.get('force_dialog'))
+        self.home.clearProperty('TMDbHelper.Player.ResolvedUrl')  # Clear our lock property
 
     def update_players(self):
         players_url = self.addon.getSettingString('players_url')
@@ -364,9 +363,39 @@ class Script(Plugin):
         self.addon.setSettingString('default_player_movies', '')
         self.addon.setSettingString('default_player_episodes', '')
 
-    def library_autoupdate(self):
-        utils.kodi_log('UPDATING TV SHOWS LIBRARY', 1)
+    def monitor_userlist(self):
+        monitor_userlist = self.params.get('monitor_userlist')
+        with utils.busy_dialog():
+            user_slug = TraktAPI().get_usernameslug()  # Get the user's slug
+            user_lists = TraktAPI().get_response_json('users', user_slug, 'lists')  # Get the user's lists
+            if not user_lists:
+                return
+            user_list_labels = [i.get('name') for i in user_lists]  # Build select dialog to choose list
+            user_list_labels.append(xbmc.getLocalizedString(231))
+        user_choice = xbmcgui.Dialog().select(self.addon.getLocalizedString(32133), user_list_labels)  # Choose the list
+        if user_choice == -1:  # User cancelled
+            return
+        elif user_list_labels[user_choice] == xbmc.getLocalizedString(231):  # User opted to clear setting
+            self.addon.setSettingString(monitor_userlist, '')
+            return
+        user_list = user_lists[user_choice].get('ids', {}).get('slug')
+        if not user_list:
+            return
+        self.addon.setSettingString(monitor_userlist, user_list)
+        if xbmcgui.Dialog().yesno(xbmc.getLocalizedString(653), self.addon.getLocalizedString(32132)):
+            self.library_autoupdate(list_slug=user_list, user_slug=user_slug)
+
+    def library_autoupdate(self, list_slug=None, user_slug=None):
+        utils.kodi_log(u'UPDATING TV SHOWS LIBRARY', 1)
         basedir_tv = self.addon.getSettingString('tvshows_library') or 'special://profile/addon_data/plugin.video.skin.info.provider/tvshows/'
+        list_slug = list_slug or self.addon.getSettingString('monitor_userlist')
+        if list_slug:
+            user_slug = user_slug or TraktAPI().get_usernameslug()
+            if user_slug:
+                context.library_userlist(user_slug=user_slug, list_slug=list_slug, confirmation_dialog=False)
+            list_slug_2 = self.addon.getSettingString('monitor_userlist_2')
+            if list_slug_2 and list_slug_2 != list_slug:
+                context.library_userlist(user_slug=user_slug, list_slug=list_slug_2, confirmation_dialog=False)
         for f in xbmcvfs.listdir(basedir_tv)[0]:
             try:
                 folder = basedir_tv + f + '/'
@@ -394,7 +423,7 @@ class Script(Plugin):
                 url = 'plugin://plugin.video.skin.info.provider/?info=seasons&tmdb_id={}&type=tv'.format(tmdb_id)
                 context.library_addtvshow(basedir=basedir_tv, folder=f, url=url, tmdb_id=tmdb_id)
             except Exception as exc:
-                utils.kodi_log('LIBRARY AUTO UPDATE ERROR:\n{}'.format(exc))
+                utils.kodi_log(u'LIBRARY AUTO UPDATE ERROR:\n{}'.format(exc))
         if self.addon.getSettingBool('auto_update'):
             xbmc.executebuiltin('UpdateLibrary(video, {})'.format(basedir_tv))
 
@@ -415,6 +444,12 @@ class Script(Plugin):
             season=self.params.get('season'), episode=self.params.get('episode'),
             cache_refresh=self.params.get('cache_refresh'))
 
+    def split_value(self):
+        idx = 0
+        for i in self.params.get('split_value', '').split(self.params.get('separator', ' / ')):
+            self.home.setProperty('{}.{}'.format(self.params.get('property', 'TMDbHelper.Split'), idx), i)
+            idx += 1
+
     def router(self):
         if not self.params:
             """ If no params assume user wants to run plugin """
@@ -422,6 +457,10 @@ class Script(Plugin):
             self.params = {'call_path': 'plugin://plugin.video.skin.info.provider/'}
         if self.params.get('authenticate_trakt'):
             TraktAPI(force=True)
+        elif self.params.get('split_value'):
+            self.split_value()
+        elif self.params.get('monitor_userlist'):
+            self.monitor_userlist()
         elif self.params.get('update_players'):
             self.update_players()
         elif self.params.get('set_defaultplayer'):

@@ -16,6 +16,7 @@ def library_cleancontent_replacer(content, old, new):
 
 
 def library_cleancontent(content, details='info=play'):
+    content = content.replace('info=flatseasons', details)
     content = content.replace('info=details', details)
     content = content.replace('fanarttv=True', '')
     content = content.replace('widget=True', '')
@@ -32,10 +33,10 @@ def library_createpath(path):
     if xbmcvfs.exists(path):
         return path
     if xbmcvfs.mkdirs(path):
-        utils.kodi_log('ADD LIBRARY -- Created path:\n{}'.format(path), 2)
+        utils.kodi_log(u'ADD LIBRARY -- Created path:\n{}'.format(path), 2)
         return path
     if _addon.getSettingBool('ignore_folderchecking'):
-        utils.kodi_log('ADD LIBRARY -- xbmcvfs reports folder does NOT exist:\n{}\nIGNORING ERROR: User set folder checking to ignore'.format(path), 2)
+        utils.kodi_log(u'ADD LIBRARY -- xbmcvfs reports folder does NOT exist:\n{}\nIGNORING ERROR: User set folder checking to ignore'.format(path), 2)
         return path
 
 
@@ -49,26 +50,31 @@ def library_createfile(filename, content, *args, **kwargs):
     path = kwargs.pop('basedir', '')
     path = path.replace('\\', '/')
     if not path:
-        return utils.kodi_log('ADD LIBRARY -- No basedir specified!', 2)
+        utils.kodi_log(u'ADD LIBRARY -- No basedir specified!', 2)
+        return
     content = library_cleancontent(content) if clean_url else content
     for folder in args:
         folder = utils.validify_filename(folder)
         path = '{}{}/'.format(path, folder)
     if not content:
-        return utils.kodi_log('ADD LIBRARY -- No content specified!', 2)
+        utils.kodi_log(u'ADD LIBRARY -- No content specified!', 2)
+        return
     if not filename:
-        return utils.kodi_log('ADD LIBRARY -- No filename specified!', 2)
+        utils.kodi_log(u'ADD LIBRARY -- No filename specified!', 2)
+        return
     if not library_createpath(path):
         xbmcgui.Dialog().ok(
             xbmc.getLocalizedString(20444),
             _addon.getLocalizedString(32122) + ' [B]{}[/B]'.format(path),
             _addon.getLocalizedString(32123))
-        return utils.kodi_log(u'ADD LIBRARY -- XBMCVFS unable to create path:\n{}'.format(path), 2)
+        utils.kodi_log(u'ADD LIBRARY -- XBMCVFS unable to create path:\n{}'.format(path), 2)
+        return
     filepath = '{}{}.{}'.format(path, utils.validify_filename(filename), file_ext)
     f = xbmcvfs.File(filepath, 'w')
     f.write(utils.try_encode_string(content))
     f.close()
     utils.kodi_log(u'ADD LIBRARY -- Successfully added:\n{}\n{}'.format(filepath, content), 2)
+    return filepath
 
 
 def library_create_nfo(tmdbtype, tmdb_id, *args, **kwargs):
@@ -80,7 +86,8 @@ def library_create_nfo(tmdbtype, tmdb_id, *args, **kwargs):
 def library_addtvshow(basedir=None, folder=None, url=None, tmdb_id=None, tvdb_id=None, imdb_id=None, p_dialog=None):
     if not basedir or not folder or not url:
         return
-    seasons = library_cleancontent(url, details='info=seasons')
+    seasons = library_cleancontent_replacer(url, 'type=episode', 'type=tv')  # Clean-up flatseasons
+    seasons = library_cleancontent(seasons, details='info=seasons')
     seasons = KodiLibrary().get_directory(seasons)
     library_create_nfo('tv', tmdb_id, folder, basedir=basedir)
     s_count = 0
@@ -91,7 +98,9 @@ def library_addtvshow(basedir=None, folder=None, url=None, tmdb_id=None, tvdb_id
             continue  # Skip special seasons S00
         season_name = '{} {}'.format(xbmc.getLocalizedString(20373), season.get('season'))
         p_dialog.update((s_count * 100) // s_total, message=u'Adding {} - {} to library...'.format(season.get('showtitle'), season_name)) if p_dialog else None
-        episodes = KodiLibrary().get_directory(season.get('file'))
+        episodes = library_cleancontent_replacer(season.get('file'), 'type=episode', 'type=season')  # Clean to prevent flatseasons
+        episodes = library_cleancontent(episodes, details='info=episodes')
+        episodes = KodiLibrary().get_directory(episodes)
         i_count = 0
         i_total = len(episodes)
         for episode in episodes:
@@ -140,9 +149,9 @@ def play():
                 dbtype, tmdb_id))
 
 
-def library_userlist():
-    list_slug = sys.listitem.getProperty('Item.list_slug')
-    user_slug = sys.listitem.getProperty('Item.user_slug')
+def library_userlist(user_slug=None, list_slug=None, confirmation_dialog=True):
+    user_slug = user_slug or sys.listitem.getProperty('Item.user_slug')
+    list_slug = list_slug or sys.listitem.getProperty('Item.list_slug')
 
     with utils.busy_dialog():
         request = TraktAPI().get_response_json('users', user_slug, 'lists', list_slug, 'items')
@@ -151,13 +160,15 @@ def library_userlist():
 
     i_count = 0
     i_total = len(request)
-    d_head = _addon.getLocalizedString(32125)
-    d_body = _addon.getLocalizedString(32126)
-    d_body += '\n[B]{}[/B] {} [B]{}[/B]'.format(list_slug, _addon.getLocalizedString(32127), user_slug)
-    d_body += '\n\n[B][COLOR=red]{}[/COLOR][/B] '.format(xbmc.getLocalizedString(14117)) if i_total > 20 else '\n\n'
-    d_body += '{} [B]{}[/B] {}.'.format(_addon.getLocalizedString(32128), i_total, _addon.getLocalizedString(32129))
-    if not xbmcgui.Dialog().yesno(d_head, d_body):
-        return
+
+    if confirmation_dialog:
+        d_head = _addon.getLocalizedString(32125)
+        d_body = _addon.getLocalizedString(32126)
+        d_body += '\n[B]{}[/B] {} [B]{}[/B]'.format(list_slug, _addon.getLocalizedString(32127), user_slug)
+        d_body += '\n\n[B][COLOR=red]{}[/COLOR][/B] '.format(xbmc.getLocalizedString(14117)) if i_total > 20 else '\n\n'
+        d_body += '{} [B]{}[/B] {}.'.format(_addon.getLocalizedString(32128), i_total, _addon.getLocalizedString(32129))
+        if not xbmcgui.Dialog().yesno(d_head, d_body):
+            return
 
     p_dialog = xbmcgui.DialogProgressBG()
     p_dialog.create('TMDbHelper', 'Adding items to library...')
@@ -185,17 +196,20 @@ def library_userlist():
             content = 'plugin://plugin.video.skin.info.provider/?info=play&tmdb_id={}&type=movie'.format(tmdb_id)
             folder = u'{} ({})'.format(item.get('title'), item.get('year'))
             movie_name = u'{} ({})'.format(item.get('title'), item.get('year'))
-            if _plugin.get_db_info(info='dbid', tmdbtype='movie', imdb_id=imdb_id, tmdb_id=tmdb_id):
+            db_file = _plugin.get_db_info(info='file', tmdbtype='movie', imdb_id=imdb_id, tmdb_id=tmdb_id)
+            if db_file:
+                all_movies.append(('filename', db_file.replace('\\', '/').split('/')[-1]))
                 p_dialog.update((i_count * 100) // i_total, message=u'Found {} in library. Skipping...'.format(movie_name))
                 utils.kodi_log(u'Trakt List Add to Library\nFound {} in library. Skipping...'.format(movie_name), 0)
                 continue
             p_dialog.update((i_count * 100) // i_total, message=u'Adding {} to library...'.format(movie_name))
             utils.kodi_log(u'Adding {} to library...'.format(movie_name), 0)
-            library_createfile(movie_name, content, folder, basedir=basedir_movie)
+            db_file = library_createfile(movie_name, content, folder, basedir=basedir_movie)
             library_create_nfo('movie', tmdb_id, folder, basedir=basedir_movie)
+            all_movies.append(('filename', db_file.split('/')[-1]))
 
         if i_type == 'show':  # Add whole tvshows
-            all_tvshows.append(item.get('title'))
+            all_tvshows.append(('title', item.get('title')))
             content = 'plugin://plugin.video.skin.info.provider/?info=seasons&nextpage=True&tmdb_id={}&type=tv'.format(tmdb_id)
             folder = u'{}'.format(item.get('title'))
             p_dialog.update((i_count * 100) // i_total, message=u'Adding {} to library...'.format(item.get('title')))
@@ -218,7 +232,7 @@ def create_playlist(items, dbtype, user_slug, list_slug):
     fcontent += u'\n    <name>{} by {} ({})</name>'.format(list_slug, user_slug, dbtype)
     fcontent += u'\n    <match>any</match>'
     for i in items:
-        fcontent += u'\n    <rule field="title" operator="is"><value>{}</value></rule>'.format(i)
+        fcontent += u'\n    <rule field="{}" operator="is"><value>{}</value></rule>'.format(i[0], i[1])
     fcontent += u'\n</smartplaylist>'
     library_createfile(filename, fcontent, basedir=filepath, file_ext='xsp', clean_url=False)
 
@@ -277,6 +291,25 @@ def library():
             return
 
 
+def sync_userlist(remove_item=False):
+    dbtype = sys.listitem.getVideoInfoTag().getMediaType()
+    user_list = sys.listitem.getProperty('container.list_slug') if remove_item else None
+    tmdb_id = sys.listitem.getProperty('tvshow.tmdb_id')
+    imdb_id = sys.listitem.getUniqueID('imdb')
+    tvdb_id = None
+    if not dbtype == 'episode':
+        tmdb_id = sys.listitem.getProperty('tmdb_id') or sys.listitem.getUniqueID('tmdb')
+        tvdb_id = sys.listitem.getUniqueID('tvdb')
+    if dbtype == 'movie':
+        item_type = 'movie'
+    elif dbtype in ['tvshow', 'season', 'episode']:
+        item_type = 'show'
+    else:  # Not the right type of item so lets exit
+        return
+    TraktAPI().sync_userlist(item_type, tmdb_id=tmdb_id, tvdb_id=tvdb_id, imdb_id=imdb_id, remove_item=remove_item, user_list=user_list)
+    xbmc.executebuiltin('Container.Refresh')
+
+
 def action(action, tmdb_id=None, tmdb_type=None, season=None, episode=None, label=None, cache_refresh=False):
     _traktapi = TraktAPI()
 
@@ -286,6 +319,10 @@ def action(action, tmdb_id=None, tmdb_type=None, season=None, episode=None, labe
         func = _traktapi.sync_collection
     elif action == 'watchlist':
         func = _traktapi.sync_watchlist
+    elif action == 'add_to_userlist':
+        return sync_userlist()
+    elif action == 'remove_from_userlist':
+        return sync_userlist(remove_item=True)
     elif action == 'library_userlist':
         return library_userlist()
     elif action == 'library':

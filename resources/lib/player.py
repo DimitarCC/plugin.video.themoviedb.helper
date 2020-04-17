@@ -111,7 +111,9 @@ class Player(Plugin):
             for d in actionlist[1:]:
                 if player[0]:
                     break  # Playable item was found in last action so let's break and play it
-                folder = KodiLibrary().get_directory(string_format_map(player[1], self.item))  # Get the next folder from the plugin
+
+                with utils.busy_dialog():
+                    folder = KodiLibrary().get_directory(string_format_map(player[1], self.item))  # Get the next folder from the plugin
 
                 if d.get('dialog'):  # Special option to show dialog of items to select from
                     d_items = []
@@ -190,25 +192,26 @@ class Player(Plugin):
         if not tmdb_id or not itemtype:
             return
 
-        # Get the details for the item
-        self.itemtype, self.tmdb_id, self.season, self.episode = itemtype, tmdb_id, season, episode
-        self.tmdbtype = 'tv' if self.itemtype in ['episode', 'tv'] else 'movie'
-        self.details = self.tmdb.get_detailed_item(self.tmdbtype, tmdb_id, season=season, episode=episode)
-        self.item['tmdb_id'] = self.tmdb_id
-        self.item['imdb_id'] = self.details.get('infoproperties', {}).get('tvshow.imdb_id') or self.details.get('infoproperties', {}).get('imdb_id')
-        self.item['tvdb_id'] = self.details.get('infoproperties', {}).get('tvshow.tvdb_id') or self.details.get('infoproperties', {}).get('tvdb_id')
-        self.item['originaltitle'] = self.details.get('infolabels', {}).get('originaltitle')
-        self.item['title'] = self.details.get('infolabels', {}).get('tvshowtitle') or self.details.get('infolabels', {}).get('title')
-        self.item['year'] = self.details.get('infolabels', {}).get('year')
+        with utils.busy_dialog():
+            # Get the details for the item
+            self.itemtype, self.tmdb_id, self.season, self.episode = itemtype, tmdb_id, season, episode
+            self.tmdbtype = 'tv' if self.itemtype in ['episode', 'tv'] else 'movie'
+            self.details = self.tmdb.get_detailed_item(self.tmdbtype, tmdb_id, season=season, episode=episode)
+            self.item['tmdb_id'] = self.tmdb_id
+            self.item['imdb_id'] = self.details.get('infoproperties', {}).get('tvshow.imdb_id') or self.details.get('infoproperties', {}).get('imdb_id')
+            self.item['tvdb_id'] = self.details.get('infoproperties', {}).get('tvshow.tvdb_id') or self.details.get('infoproperties', {}).get('tvdb_id')
+            self.item['originaltitle'] = self.details.get('infolabels', {}).get('originaltitle')
+            self.item['title'] = self.details.get('infolabels', {}).get('tvshowtitle') or self.details.get('infolabels', {}).get('title')
+            self.item['year'] = self.details.get('infolabels', {}).get('year')
 
-        # Check if we have a local file
-        # TODO: Add option to auto play local
-        if self.details and self.itemtype == 'movie':
-            self.is_local = self.localmovie()
-        if self.details and self.itemtype == 'episode':
-            self.is_local = self.localepisode()
+            # Check if we have a local file
+            # TODO: Add option to auto play local
+            if self.details and self.itemtype == 'movie':
+                self.is_local = self.localmovie()
+            if self.details and self.itemtype == 'episode':
+                self.is_local = self.localepisode()
 
-        self.setup_players(details=True)
+            self.setup_players(details=True)
 
         if not self.itemlist:
             return False
@@ -259,11 +262,10 @@ class Player(Plugin):
             self.item[k] = v.replace(',', '')
             self.item[k + '_+'] = v.replace(' ', '+')
             self.item[k + '_-'] = v.replace(' ', '-')
-            self.item[k + '_escaped'] = v.replace(' ', '%2520')
-            self.item[k + '_escaped+'] = v.replace(' ', '%252B')
+            self.item[k + '_escaped'] = quote(quote(utils.try_encode_string(v)))
+            self.item[k + '_escaped+'] = quote(quote_plus(utils.try_encode_string(v)))
             self.item[k + '_url'] = quote(utils.try_encode_string(v))
             self.item[k + '_url+'] = quote_plus(utils.try_encode_string(v))
-            self.item[k + '_url_escaped+'] = quote(utils.try_encode_string(self.item[k + '_+']))
 
     def build_players(self, tmdbtype=None):
         basedirs = ['special://profile/addon_data/plugin.video.skin.info.provider/players/']
@@ -354,9 +356,17 @@ class Player(Plugin):
 
     def localmovie(self):
         # fuzzy_match = self.addon.getSettingBool('fuzzymatch_movie')
-        return self.localfile(KodiLibrary(dbtype='movie').get_info('file', fuzzy_match=False, **self.item))
+        return self.localfile(KodiLibrary(dbtype='movie').get_info(
+            'file', fuzzy_match=False,
+            tmdb_id=self.item.get('tmdb_id'),
+            imdb_id=self.item.get('imdb_id')))
 
     def localepisode(self):
         # fuzzy_match = self.addon.getSettingBool('fuzzymatch_tv')
-        dbid = KodiLibrary(dbtype='tvshow').get_info('dbid', fuzzy_match=False, **self.item)
-        return self.localfile(KodiLibrary(dbtype='episode', tvshowid=dbid).get_info('file', season=self.season, episode=self.episode))
+        dbid = KodiLibrary(dbtype='tvshow').get_info(
+            'dbid', fuzzy_match=False,
+            tmdb_id=self.item.get('tmdb_id'),
+            tvdb_id=self.item.get('tvdb_id'),
+            imdb_id=self.item.get('imdb_id'))
+        return self.localfile(KodiLibrary(dbtype='episode', tvshowid=dbid).get_info(
+            'file', season=self.season, episode=self.episode))

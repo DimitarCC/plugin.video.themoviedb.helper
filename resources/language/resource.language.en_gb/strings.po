@@ -434,7 +434,7 @@ msgstr ""
 
 #: /resources/settings.xml
 msgctxt "#32086"
-msgid "Auto-update TvShows for new/missing episodes on startup"
+msgid "Auto-update library and add new/missing episodes"
 msgstr ""
 
 #: /resources/settings.xml
@@ -650,6 +650,66 @@ msgstr ""
 #: /resources/lib/context.py
 msgctxt "#32129"
 msgid "items"
+msgstr ""
+
+#: /resources/settings.xml
+msgctxt "#32130"
+msgid "Auto-update library every X hours"
+msgstr ""
+
+#: /resources/settings.xml
+msgctxt "#32131"
+msgid "Auto-update library from Trakt list"
+msgstr ""
+
+#: /resources/lib/script.py
+msgctxt "#32132"
+msgid "Do you wish to update the library using this Trakt list now?"
+msgstr ""
+
+#: /resources/lib/script.py
+msgctxt "#32133"
+msgid "Select List"
+msgstr ""
+
+#: /resources/settings.xml
+msgctxt "#32134"
+msgid "User slug"
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32135"
+msgid "Successfully removed {} {} from {} list."
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32136"
+msgid "Successfully added {} {} to {} list."
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32137"
+msgid "Failed to remove {} {} from {} list."
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32138"
+msgid "Failed to add {} {} to {} list."
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32139"
+msgid "Remove from Trakt list"
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32140"
+msgid "Add to Trakt list"
+msgstr ""
+
+#: /resources/lib/traktapi.py
+msgctxt "#32141"
+msgid "Create new list..."
 msgstr ""
 
 msgctxt "#30030"
